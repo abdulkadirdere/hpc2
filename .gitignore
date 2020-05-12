@@ -6,3 +6,4 @@
 *.fatbin
 !*.cu
 
+assignments/assignment2/transpose
