@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h> 
 
-int WIDTH = 4;
-int TILE_WIDTH = 2;
+int WIDTH = 512;
+int TILE_WIDTH = 32;
 
 int randomNumberGeneration(int upperBound, int lowerBound) {
     int num = (rand() % (upperBound - lowerBound + 1)) + lowerBound;
@@ -37,6 +38,16 @@ void printArray(int *array, int width) {
     }
 }
 
+int *serialTranspose(int *array, int width){
+    int *result = (int *)malloc(width*width * sizeof(int *));
+    for (int i=0; i<width; i++){
+        for (int j=0; j<width; j++){
+            result[j*width +i] = array[i*width +j];
+        }
+    }
+    return result;
+}
+
 __global__ void global_transpose_matrix(int *o_data, const int *i_data, int tile_width){
     int x = blockIdx.x * blockDim.x + threadIdx.x; // blockDim = tile_width
     int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -59,8 +70,18 @@ int main() {
     int *d_input_matrix;
     int *d_output_matrix;
 
-    printArray(h_input_matrix, WIDTH);
+    // printArray(h_input_matrix, WIDTH);
     int memory_space_required = num_elemet * sizeof(int);
+
+//-------------- Serial Matrix Transpose on CPU --------------
+    clock_t start_timing = clock();
+    result_matrix = serialTranspose(h_input_matrix, WIDTH);
+    clock_t end_timing = clock();
+    float serial_time = (float)(end_timing - start_timing);
+    printf("Serial Matrix Transpose Time %3.6f ms \n", serial_time);
+    // printArray(result_matrix, WIDTH);
+
+//-------------- CUDA GLOBAL --------------
 
     // allocate memory
     cudaMalloc((void **) &d_input_matrix, memory_space_required);
@@ -94,7 +115,7 @@ int main() {
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
 
-    printArray(result_matrix, WIDTH);
+    // printArray(result_matrix, WIDTH);
 
     cudaFree(h_input_matrix);
     cudaFree(result_matrix);
