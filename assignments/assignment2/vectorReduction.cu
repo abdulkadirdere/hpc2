@@ -41,10 +41,28 @@ void printVector(int *vector, int num_element) {
     printf("\n");
 }
 
-__global__ void sharedVectorSum(float *d_output, float *d_input){
+__global__ void globalVectorSum(int *d_output, int *d_input){
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
+    int tdx = threadIdx.x;
+    
+    for (int stride = blockDim.x/2; stride > 0; stride >>= 1){
+        if (tdx < stride){
+            d_input[i] += d_input[i + stride];
+        }
+        __syncthreads();
+    }
+
+    // thread 0 will write the results
+    if (tdx == 0){
+        d_output[blockIdx.x] = d_input[i];
+    }
+}
+
+__global__ void sharedVectorSum(int *d_output, int *d_input){
+    // shared data is allocated from kernel
     extern __shared__ int shared_data[];
 
-    int i = blockDim.x * blockIdx.x + threadIdx.x;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
     int tdx = threadIdx.x;
 
     // load data to shared memory
@@ -64,25 +82,16 @@ __global__ void sharedVectorSum(float *d_output, float *d_input){
     }
 }
 
-__global__ void globalVectorSum(float *d_output, float *d_input){
-    int i = blockDim.x * blockIdx.x + threadIdx.x;
-    int tdx = threadIdx.x;
-    
-    for (int stride = blockDim.x/2; stride > 0; stride >>= 1){
-        if (tdx < stride){
-            d_input[i] += d_input[i + stride];
-        }
-        __syncthreads();
+int sum(int *h_output_vector, int num_element){
+    int sum = 0;
+    for (int i = 0; i<num_element; i++){
+        sum += h_output_vector[i];
     }
-
-    // thread 0 will write the results
-    if (tdx == 0){
-        d_output[blockIdx.x] = d_input[i];
-    }
+    return sum;
 }
 
 int main(){
-    const int num_element = 10240000;
+    const int num_element = 1024000;
 
     // Host memory allocation
     int *h_input_vector = createVector(num_element);
@@ -104,20 +113,17 @@ int main(){
     float serial_time = 0;
     cudaEventElapsedTime(&serial_time, serial_start, serial_stop);
     printf("Serial Matrix Transpose Time: %3.6f ms \n", serial_time);
-    // printf("Serial Sum: %d\n", serial_sum);
+    printf("Serial Sum: %d\n", serial_sum);
     cudaEventDestroy(serial_start);
     cudaEventDestroy(serial_stop);
 
 //-------------- CUDA Vector Summation Global Memory --------------//
     // Device memory allocation
-    float *d_input_vector;
-    float *d_output_vector;
+    int *d_input_vector;
+    int *d_output_vector;
 
     cudaMalloc((void **) &d_input_vector, memory_space_required);
     cudaMalloc((void **) &d_output_vector, memory_space_required);
-
-    // // copy memory from host to device
-    cudaMemcpy(d_input_vector, h_input_vector, memory_space_required, cudaMemcpyHostToDevice);
 
     // CUDA timing of event
     cudaEvent_t global_start, global_stop, shared_start, shared_stop;
@@ -130,11 +136,14 @@ int main(){
    int MAX_THREADS = 1024;
    int NUM_THREADS = MAX_THREADS;
    int NUM_BLOCKS = num_element / MAX_THREADS;
-   // if (NUM_BLOCKS == 0 ){
-   //     NUM_BLOCKS = 1;
-   // }
+   if (NUM_BLOCKS == 0 ){
+       NUM_BLOCKS = 1;
+   }
 
     //-------------- CUDA Vector Summation Global Memory --------------//
+    // copy memory from host to device
+    cudaMemcpy(d_input_vector, h_input_vector, memory_space_required, cudaMemcpyHostToDevice);
+    // global vector kernel
     cudaEventRecord(global_start);
     globalVectorSum<<<NUM_BLOCKS, NUM_THREADS>>>(d_output_vector, d_input_vector);
     cudaEventRecord(global_stop);
@@ -145,8 +154,15 @@ int main(){
     printf("Global Memory Time elpased: %3.6f ms \n", global_elapsedTime);
     cudaEventDestroy(global_start);
     cudaEventDestroy(global_stop);
+    cudaMemcpy(h_output_vector, d_output_vector, memory_space_required, cudaMemcpyDeviceToHost);
+    
+    int global_sum = sum(h_output_vector, num_element);
+    printf("Global Memory Sum: %d \n", global_sum);
 
     //-------------- CUDA Vector Summation Shared Memory --------------//
+    // copy memory from host to device
+    cudaMemcpy(d_input_vector, h_input_vector, memory_space_required, cudaMemcpyHostToDevice);
+    // shared vector kernel
     cudaEventRecord(shared_start);
     sharedVectorSum<<<NUM_BLOCKS, NUM_THREADS, NUM_THREADS * sizeof(int)>>>(d_output_vector, d_input_vector);
     cudaEventRecord(shared_stop);
@@ -159,13 +175,10 @@ int main(){
     cudaEventDestroy(shared_stop);
 
     cudaMemcpy(h_output_vector, d_output_vector, memory_space_required, cudaMemcpyDeviceToHost);
+    int shared_sum = sum(h_output_vector, num_element);
+    printf("Shared Memory Sum: %d \n", shared_sum);
 
-    // int sum = 0;
-    // for (int i = 0; i<num_element; i++){
-    //     sum += h_output_vector[i];
-    // }
-    // printf("%d \n", sum);
-
+    //-------------- Free Memory --------------//
     free(h_input_vector);
     free(h_output_vector);
     cudaFree(d_input_vector);
