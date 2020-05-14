@@ -1,19 +1,22 @@
 INC="./inc"
 FLAGS=-I$(INC)
-OMPFLAG=-fopenmp
-CC=gcc
+CC=nvcc
 
-all: KNNserial KNNparallel run
+all: matrixTranspose vectorReduction matrixMultip run
 
-KNNserial: KNNserial.c
-	$(CC) KNNserial.c -lm -o KNNserial $(OMPFLAG)
+matrixTranspose: matrixTranspose.cu
+	$(CC) matrixTranspose.cu -o matrixTranspose
 
-KNNparallel: KNNparallel
-	$(CC) KNNparallel.c -lm -o KNNparallel $(OMPFLAG)
+vectorReduction: vectorReduction.cu
+	$(CC) vectorReduction.cu -o vectorReduction
+
+matrixMultip: matrixMultip.cu
+	$(CC) matrixMultip.cu -o matrixMultip
 
 run:
-	time ./KNNserial 
-	time ./KNNparallel
+	./matrixTranspose 
+	./vectorReduction
+	./matrixMultip 
 
 clean:
-	rm KNNserial KNNparallel
+	rm matrixTranspose vectorReduction matrixMultip

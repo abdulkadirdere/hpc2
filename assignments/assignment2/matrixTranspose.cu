@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h> 
+#include <iostream>
+
 
 const int TILE_WIDTH = 32;
 
@@ -164,7 +166,19 @@ int main() {
         // printArray(h_result_matrix, WIDTH);
 
         //-------------- CUDA Performance Metrics --------------//
+        float num_ops= WIDTH * WIDTH;
+  
+        float serial_throughput = num_ops / (serial_time / 1000.0f) / 1000000000.0f;
+        float global_throughput = num_ops / (global_elapsedTime / 1000.0f) / 1000000000.0f;
+        float shared_throughput = num_ops / (shared_elapsedTime / 1000.0f) / 1000000000.0f;
 
+        std::cout << "Matrix size: " << WIDTH << "x" << WIDTH << std::endl;
+        std::cout << "Tile size: " << TILE_WIDTH << "x" << TILE_WIDTH << std::endl;
+      
+        std::cout << "\nThroughput of serial implementation: " << serial_throughput << " GFLOPS" << std::endl;
+        std::cout << "Throughput of global memory kernel: " << global_throughput << " GFLOPS" << std::endl;
+        std::cout << "Throughput of shared memory kernel: " << shared_throughput << " GFLOPS" << std::endl;
+        std::cout << "Performance improvement: shared over global " << shared_throughput / global_throughput << "x" << std::endl;
 
         free(h_input_matrix);
         free(h_result_matrix);
@@ -172,5 +186,4 @@ int main() {
         cudaFree(d_output_matrix);
         printf("\n");
     // }
-    
 }
