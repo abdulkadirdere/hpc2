@@ -4,6 +4,7 @@
 *.ptx
 *.cubin
 *.fatbin
+*.out
 !*.cu
 
 assignments/assignment2/transpose

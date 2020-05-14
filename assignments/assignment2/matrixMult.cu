@@ -12,6 +12,7 @@
 
 #define TILE_WIDTH 8
 #define BLOCK_SIZE 32
+
 // a sequential version of matrix_multiply
 void matrix_multiply_seq(float *a, float *b, float *ab, size_t width){
 	int i, j, k;
@@ -50,6 +51,29 @@ int matrixEqual(  float *matrixA, float *matrixB, int m, int n ){
   return bad;
 }
 
+__global__ void globalTiledMult(float *d_matrix_C, float *d_matrix_A, float *d_matrix_B, size_t width){
+  __shared__ float shared_A[TILE_WIDTH][TILE_WIDTH];
+  __shared__ float shared_B[TILE_WIDTH][TILE_WIDTH];
+  int bx = blockIdx.x; int by = blockIdx.y;
+  int tx = threadIdx.x; int ty = threadIdx.y;
+
+  // calculate the row & column index of the element
+  int row = by*TILE_WIDTH + ty;
+  int col = bx*TILE_WIDTH + tx;
+  float result = 0;
+  // do dot product between row of a and column of b
+  for(int i = 0; i < width/TILE_WIDTH; ++i){
+    shared_A[ty][tx] = d_matrix_A[row*width + (i*TILE_WIDTH+tx)];
+    shared_B[ty][tx] = d_matrix_B[col + (i*TILE_WIDTH+ty)*width];
+    __syncthreads();
+    for(int k = 0; k < TILE_WIDTH; ++k){
+      result += shared_A[ty][k] * shared_B[k][tx];
+      __syncthreads();
+    }
+    d_matrix_C[row*width+col] = result;
+  }
+}
+
 int main(void){
   // create a large workload so we can easily measure the
   // performance difference of both implementations
@@ -83,9 +107,11 @@ int main(void){
   cudaMemcpy(d_b, h_b, sizeof(float) * n * n, cudaMemcpyHostToDevice);
 
   // time the kernel launches using CUDA events
-  cudaEvent_t launch_begin, launch_end;
+  cudaEvent_t launch_begin, launch_end, tiled_start, tiled_end;
   cudaEventCreate(&launch_begin);
   cudaEventCreate(&launch_end);
+  cudaEventCreate(&tiled_start);
+  cudaEventCreate(&tiled_end);
   //time many sequential run and take the average
   size_t num_launches = 4;
   double average_seq_time;
@@ -95,6 +121,7 @@ int main(void){
     perror( "clock gettime" );
     exit( EXIT_FAILURE );
   }
+  // -------------------- sequential ----------------//
   for(int i = 0; i < num_launches; i++){
 	  matrix_multiply_seq(h_a, h_b, h_s, n);
   }
@@ -109,6 +136,8 @@ int main(void){
   average_seq_time /= num_launches;
   std::cout << " done." << std::endl;
   std::cout << average_seq_time << "s" << std::endl;
+
+//-------------- Simple Matrix Multiplication --------------//
   // launch a single "warm-up" kernel
   matrix_multiply_simple<<<num_blocks,block_size>>>(d_a, d_b, d_c, n);
   cudaMemcpy(h_res, d_c, sizeof(float)*n*n, cudaMemcpyDeviceToHost);
@@ -119,6 +148,7 @@ int main(void){
 	  printf("Verification failed.\n");
 	  num_launches = 0;
   }
+
   // time many kernel launches and take the average time
   float average_simple_time = 0;
   std::cout << "Timing simple implementation...";
@@ -137,18 +167,62 @@ int main(void){
   std::cout << " done." << std::endl;
   std::cout << average_simple_time << "ms" << std::endl;
 
+
+//-------------- Tiled Matrix Multiplication --------------//
+  int Num_Blocks = n/BLOCK_SIZE;
+  if (n%BLOCK_SIZE) Num_Blocks++;
+
+  dim3 dimGrid(Num_Blocks,Num_Blocks);
+  dim3 dimBlock(BLOCK_SIZE,BLOCK_SIZE);
+  // launch a single "warm-up" kernel
+  globalTiledMult<<<dimGrid, dimBlock>>>(d_a, d_b, d_c, n);
+  cudaMemcpy(h_res, d_c, sizeof(float)*n*n, cudaMemcpyDeviceToHost);
+  int tile_equal = matrixEqual(h_res, h_s, n, n);
+  if(tile_equal)
+    printf("Verification success.\n");
+  else {
+    printf("Verification failed.\n");
+    num_launches = 0;
+  }
+
+  // time many kernel launches and take the average time
+  float average_tiled_time = 0;
+  std::cout << "Timing tiled implementation...";
+  for(int i = 0; i < num_launches; ++i){
+    // record a CUDA event immediately before and after the kernel launch
+    cudaEventRecord(launch_begin,0);
+    globalTiledMult<<<num_blocks,block_size>>>(d_a, d_b, d_c, n);
+    cudaEventRecord(launch_end,0);
+    cudaEventSynchronize(launch_end);
+    // measure the time spent in the kernel
+    float tiled_time = 0;
+    cudaEventElapsedTime(&tiled_time, launch_begin, launch_end);
+    average_tiled_time += tiled_time;
+    std::cout << " Tiled Time" << tiled_time <<std::endl;
+  }
+  average_tiled_time /= num_launches;
+  std::cout << " done." << std::endl;
+  std::cout << average_tiled_time << "ms" << std::endl;
+
   // report the effective throughput of each kernel in GFLOPS
   // the effective throughput is measured as the number of floating point operations performed per second:
   // (one mul + one add) * N^3
-  float num_ops=2 * n * n * n;
+  float num_ops= 2 * n * n * n;
+  
   float seq_throughput = num_ops / average_seq_time / 1000000000.0f;
   float simple_throughput = num_ops / (average_simple_time / 1000.0f) / 1000000000.0f;
+  float tiled_throughput = num_ops / (average_tiled_time / 1000.0f) / 1000000000.0f;
 
   std::cout << "Matrix size: " << n << "x" << n << std::endl;
   std::cout << "Tile size: " << TILE_WIDTH << "x" << TILE_WIDTH << std::endl;
-  std::cout << "Throughput of sequential implementation: " << seq_throughput << " GFLOPS" << std::endl;
+
+  std::cout << "\nThroughput of sequential implementation: " << seq_throughput << " GFLOPS" << std::endl;
   std::cout << "Throughput of simple kernel: " << simple_throughput << " GFLOPS" << std::endl;
-  std::cout << "Performance improvement: simple over seqential " << simple_throughput / seq_throughput << "x" << std::endl;
+  std::cout << "Performance improvement: simple over sequential " << simple_throughput / seq_throughput << "x" << std::endl;
+
+  std::cout << "\nThroughput of Tiled implementation: " << tiled_throughput << " GFLOPS" << std::endl;
+  std::cout << "Performance improvement: simple over tiled " << simple_throughput / tiled_throughput << "x" << std::endl;
+  std::cout << "Performance improvement: sequestial over tiled " << seq_throughput / tiled_throughput << "x" << std::endl;
 
   // destroy the CUDA events
   cudaEventDestroy(launch_begin);

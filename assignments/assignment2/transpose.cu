@@ -166,8 +166,8 @@ int main() {
         //-------------- CUDA Performance Metrics --------------//
 
 
-        cudaFree(h_input_matrix);
-        cudaFree(h_result_matrix);
+        free(h_input_matrix);
+        free(h_result_matrix);
         cudaFree(d_input_matrix);
         cudaFree(d_output_matrix);
         printf("\n");
