@@ -98,21 +98,21 @@ __global__ void shared_transpose_matrix(int *output_data, const int *input_data)
 
 int main() {
     // matrix sizes 2^9, 2^10, 2^11, 2^12 = 512, 1024, 2048, 4096
-    int matrix_sizes[] = {64, 256, 512, 1024, 2048, 4096};
+    int matrix_sizes[] = {256, 512, 1024, 2048, 4096};
     // int n = sizeof(matrix_sizes)/sizeof(matrix_sizes[0]);
     // for (int size=0; size < n; size++ ){
-        int WIDTH = matrix_sizes[5];
-        int num_elemet = WIDTH * WIDTH;
+        int WIDTH = matrix_sizes[0];
+        int num_element = WIDTH * WIDTH;
         printf("Matrix size %d x %d \n-------------------------\n" ,WIDTH, WIDTH);
 
         // create the matrix and fill it with random numbers
-        int *h_input_matrix = createMatrix(num_elemet);
-        int *h_result_matrix = allocateMatrix(num_elemet);
+        int *h_input_matrix = createMatrix(num_element);
+        int *h_result_matrix = allocateMatrix(num_element);
         int *d_input_matrix;
         int *d_output_matrix;
 
         // printArray(h_input_matrix, WIDTH);
-        int memory_space_required = num_elemet * sizeof(int);
+        int memory_space_required = num_element * sizeof(int);
 
     //-------------- Serial Matrix Transpose on CPU --------------//
         cudaEvent_t serial_start, serial_stop;
@@ -189,11 +189,16 @@ int main() {
 
         std::cout << "Matrix size: " << WIDTH << "x" << WIDTH << std::endl;
         std::cout << "Tile size: " << TILE_WIDTH << "x" << TILE_WIDTH << std::endl;
+
+        std::cout << "\nSpeedup of global memory kernel (CPU/GPU): " << serial_time / global_elapsedTime << " ms" << std::endl;
+        std::cout << "Speedup of shared memory kernel (CPU/GPU): " << serial_time / shared_elapsedTime << " ms" << std::endl;
       
         std::cout << "\nThroughput of serial implementation: " << serial_throughput << " GFLOPS" << std::endl;
         std::cout << "Throughput of global memory kernel: " << global_throughput << " GFLOPS" << std::endl;
         std::cout << "Throughput of shared memory kernel: " << shared_throughput << " GFLOPS" << std::endl;
-        std::cout << "Performance improvement: shared over global " << shared_throughput / global_throughput << "x" << std::endl;
+        std::cout << "Performance improvement: simple over global " << serial_throughput / global_throughput << "x" << std::endl;
+        std::cout << "Performance improvement: simple over shared " << serial_throughput / shared_throughput << "x" << std::endl;
+        std::cout << "Performance improvement: global over shared " << global_throughput / shared_throughput << "x" << std::endl;
 
         free(h_input_matrix);
         free(h_result_matrix);
