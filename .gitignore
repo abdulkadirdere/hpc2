@@ -7,5 +7,4 @@
 *.out
 !*.cu
 
-assignments/assignment2/transpose
-assignments/assignment2/vect
+assignments/assignment2/assignment2_docs/*
