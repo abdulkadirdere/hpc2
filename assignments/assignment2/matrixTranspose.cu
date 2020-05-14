@@ -39,8 +39,11 @@ void printArray(int *array, int width) {
     }
 }
 
-int *serialTranspose(int *array, int width){
+int *sequential_transpose(int *array, int width){
+    // allocate space for the results array
     int *result = (int *)malloc(width*width * sizeof(int *));
+    // swap i and j values (x and y) in the matrix to produce the transpose
+    // result maps to result(j,i) = input(i,j)
     for (int i=0; i<width; i++){
         for (int j=0; j<width; j++){
             result[j*width +i] = array[i*width +j];
@@ -49,33 +52,45 @@ int *serialTranspose(int *array, int width){
     return result;
 }
 
-__global__ void global_transpose_matrix(int *output_data, const int *input_data, int tile_width){
-    int x = blockIdx.x * blockDim.x + threadIdx.x; // blockDim = tile_width
+__global__ void global_transpose_matrix(int *output_data, const int *input_data){
+    // x =  get threads in x direction i.e. columns
+    // y = get threads in y direction i.e. rows
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
-    int width = gridDim.x * blockDim.x;
+    int width = gridDim.x * blockDim.x; 
 
+    // swap x and x values in the matrix to produce the transpose
+    // results map to output(y,x) = input(x,y)
     for (int i = 0; i < blockDim.x; i+= width){
         output_data[x*width + (y+i)] = input_data[(y+i)*width + x];
     }
 }
 
-__global__ void shared_transpose_matrix(int *output_data, const int *input_data, int tile_width){
-
+__global__ void shared_transpose_matrix(int *output_data, const int *input_data){
+    // creating tiles in the shared memory for faster computation
+    // each tile is created of the preset size i.e. 32 in this case
     __shared__ int tile[TILE_WIDTH] [TILE_WIDTH+1];
+    // x =  get threads in x direction i.e. columns
+    // y = get threads in y direction i.e. rows
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
     int width = gridDim.x * blockDim.x;
 
+    // swap x and x values in the tile to produce the transposed tiled
+    // tile maps to (y,x) = input(x,y)
+    // we save these tiles in transposed hence it is (y,x)
+    // this will help us to elimanate the usage of thread synching for output 
     for (int i = 0; i < blockDim.x; i+= width){
         tile[threadIdx.y+i][threadIdx.x] = input_data[(y+i)*width + x];
     }
-    
+    // thread barrier. All threads must reach this barrier before continuing
     __syncthreads();
 
-    // transpose the blocks
+    // transpose the blocks for writing to output matrix
     x = blockIdx.y * blockDim.x + threadIdx.x; // swap block x to y
     y = blockIdx.x * blockDim.x + threadIdx.y; // swap block y to x
 
+    // write to output data
     for (int i=0; i< blockDim.x; i+=width){
         output_data[(y + i)*width + x] = tile[threadIdx.x][threadIdx.y+i];
     }
@@ -83,14 +98,14 @@ __global__ void shared_transpose_matrix(int *output_data, const int *input_data,
 
 int main() {
     // matrix sizes 2^9, 2^10, 2^11, 2^12 = 512, 1024, 2048, 4096
-    int matrix_sizes[] = {64, 512, 1024, 2048, 4096};
+    int matrix_sizes[] = {64, 256, 512, 1024, 2048, 4096};
     // int n = sizeof(matrix_sizes)/sizeof(matrix_sizes[0]);
     // for (int size=0; size < n; size++ ){
-        int WIDTH = matrix_sizes[0];
+        int WIDTH = matrix_sizes[5];
         int num_elemet = WIDTH * WIDTH;
         printf("Matrix size %d x %d \n-------------------------\n" ,WIDTH, WIDTH);
 
-        // create the matrix 
+        // create the matrix and fill it with random numbers
         int *h_input_matrix = createMatrix(num_elemet);
         int *h_result_matrix = allocateMatrix(num_elemet);
         int *d_input_matrix;
@@ -105,7 +120,7 @@ int main() {
         cudaEventCreate(&serial_stop);
 
         cudaEventRecord(serial_start);
-        h_result_matrix = serialTranspose(h_input_matrix, WIDTH);
+        h_result_matrix = sequential_transpose(h_input_matrix, WIDTH);
         cudaEventRecord(serial_stop);
         cudaEventSynchronize(serial_stop);
 
@@ -137,7 +152,7 @@ int main() {
     //-------------- CUDA Matrix Transpose Global Memory --------------//
         // start the global memory kernel
         cudaEventRecord(global_start);
-        global_transpose_matrix<<<Grid_Dim, Block_Dim>>>(d_output_matrix, d_input_matrix, TILE_WIDTH);
+        global_transpose_matrix<<<Grid_Dim, Block_Dim>>>(d_output_matrix, d_input_matrix);
         cudaEventRecord(global_stop);
         cudaEventSynchronize(global_stop);
 
@@ -150,7 +165,7 @@ int main() {
     //-------------- CUDA Matrix Transpose Shared Memory --------------//
         // start the shared memory kernel
         cudaEventRecord(shared_start);
-        shared_transpose_matrix<<<Grid_Dim, Block_Dim>>>(d_output_matrix, d_input_matrix, TILE_WIDTH);
+        shared_transpose_matrix<<<Grid_Dim, Block_Dim>>>(d_output_matrix, d_input_matrix);
         cudaEventRecord(shared_stop); 
         cudaEventSynchronize(shared_stop);
         
@@ -166,7 +181,7 @@ int main() {
         // printArray(h_result_matrix, WIDTH);
 
         //-------------- CUDA Performance Metrics --------------//
-        float num_ops= WIDTH * WIDTH;
+        float num_ops= num_element; // every element swap once
   
         float serial_throughput = num_ops / (serial_time / 1000.0f) / 1000000000.0f;
         float global_throughput = num_ops / (global_elapsedTime / 1000.0f) / 1000000000.0f;
