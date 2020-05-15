@@ -13,6 +13,11 @@ vectorReduction: vectorReduction.cu
 matrixMultiplication: matrixMultiplication.cu
 	$(CC) matrixMultiplication.cu -o matrixMultiplication.out
 
+device: device.cu
+	$(CC) device.cu -o device.out
+	srun -N1 ./device.out
+	rm device.out
+	
 run:
 	srun -N1 ./matrixTranspose.out
 	srun -N1 ./vectorReduction.out

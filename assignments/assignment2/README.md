@@ -17,3 +17,8 @@ To clean the output files:
 ```
 make clean
 ```
+
+To display the device information files:
+```
+make device
+```
