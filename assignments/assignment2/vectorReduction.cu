@@ -197,7 +197,7 @@ int main(){
 
     std::cout << "Vector size: " << num_element << std::endl;
 
-    printf("\nSerial Matrix Transpose Time: %3.6f ms \n", serial_time);
+    printf("\nSerial Matrix Time: %3.6f ms \n", serial_time);
     printf("Global Memory Time elpased: %3.6f ms \n", global_elapsedTime);
     printf("Shared Memory Time elpased: %3.6f ms \n", shared_elapsedTime);
 
@@ -210,6 +210,7 @@ int main(){
     std::cout << "Performance improvement: simple over global " << serial_throughput / global_throughput << "x" << std::endl;
     std::cout << "Performance improvement: simple over shared " << serial_throughput / shared_throughput << "x" << std::endl;
     std::cout << "Performance improvement: global over shared " << global_throughput / shared_throughput << "x" << std::endl;
+    printf("\n");
 
     //-------------- Free Memory --------------//
     free(h_input_vector);

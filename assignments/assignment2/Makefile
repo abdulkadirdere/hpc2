@@ -14,9 +14,9 @@ matrixMultiplication: matrixMultiplication.cu
 	$(CC) matrixMultiplication.cu -o matrixMultiplication.out
 
 run:
-	./matrixTranspose.out
-	./vectorReduction.out
-	./matrixMultiplication.out
+	srun -N1 ./matrixTranspose.out
+	srun -N1 ./vectorReduction.out
+	srun -N1 ./matrixMultiplication.out
 
 clean:
 	rm matrixTranspose.out vectorReduction.out matrixMultiplication.out

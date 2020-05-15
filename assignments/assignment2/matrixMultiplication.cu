@@ -211,7 +211,7 @@ int main(void){
   std::cout << "Performance improvement: simple over sequential " << simple_throughput / seq_throughput << "x" << std::endl;
   std::cout << "Performance improvement: tiled over sequential " << tiled_throughput/seq_throughput << "x" << std::endl;
   std::cout << "Performance improvement: tiled over simple " << tiled_throughput/simple_throughput << "x" << std::endl;
-    
+  printf("\n");
   // deallocate device memory
   cudaFree(d_a);
   cudaFree(d_b);
