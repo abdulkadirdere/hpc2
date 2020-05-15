@@ -104,7 +104,7 @@ int sum(int *h_output_vector, int num_element){
 }
 
 int main(){
-    const int num_element = 256;
+    const int num_element = 1024000;
 
     // Host memory allocation
     int *h_input_vector = createVector(num_element);

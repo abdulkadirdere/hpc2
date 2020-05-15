@@ -101,7 +101,7 @@ int main() {
     int matrix_sizes[] = {256, 512, 1024, 2048, 4096};
     // int n = sizeof(matrix_sizes)/sizeof(matrix_sizes[0]);
     // for (int size=0; size < n; size++ ){
-        int WIDTH = matrix_sizes[0];
+        int WIDTH = matrix_sizes[4];
         int num_element = WIDTH * WIDTH;
 
         // create the matrix and fill it with random numbers

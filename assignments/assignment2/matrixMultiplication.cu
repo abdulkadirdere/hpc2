@@ -89,7 +89,7 @@ int main(void){
   // create a large workload so we can easily measure the
   // performance difference of both implementations
   // note that n measures the width of the matrix, not the number of total elements
-  const size_t n = 1<<8;
+  const size_t n = 1<<10;
   //const dim3 block_size(TILE_WIDTH,TILE_WIDTH);
   const dim3 block_size(BLOCK_SIZE,BLOCK_SIZE);
   const dim3 num_blocks(n / block_size.x, n / block_size.y);
@@ -169,8 +169,8 @@ int main(void){
   }
   average_simple_time /= num_launches;
   std::cout << " done." << std::endl;
-  std::cout <<"Average sequential time: " << average_seq_time*1000 << "ms" << std::endl;
-  std::cout <<"Average simple time: " << average_simple_time << "ms" << std::endl;
+  std::cout <<"Average sequential time: " << average_seq_time*1000 << " ms" << std::endl;
+  std::cout <<"Average simple time: " << average_simple_time << " ms" << std::endl;
 
 //-------------- Tiled Matrix Multiplication --------------//
     float average_tiled_time = 0;
@@ -193,7 +193,7 @@ int main(void){
   cudaEventDestroy(launch_end);
 
   average_tiled_time /= num_launches;
-  std::cout <<"Average tiled time: " << average_tiled_time << "ms" << std::endl;
+  std::cout <<"Average tiled time: " << average_tiled_time << " ms" << std::endl;
 
   // report the effective throughput of each kernel in GFLOPS
   // the effective throughput is measured as the number of floating point operations performed per second:
