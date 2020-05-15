@@ -1,7 +1,3 @@
-// This example demonstrates the use of shared per-block arrays
-// implement an optimized dense matrix multiplication algorithm.
-
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <vector>
@@ -42,31 +38,39 @@ __global__ void matrix_multiply_simple(float *a, float *b, float *ab, size_t wid
   ab[row*width+col] = result;
 }
 
-__global__ void matrix_multiply_shared(float *a, float *b, float *ab, size_t width){
+__global__ void matrix_multiply_shared(float *data_a, float *data_b, float *data_output, size_t width){
+  // create tiles in shared memrory for the tile multiplication
   __shared__ float shared_A[TILE_WIDTH][TILE_WIDTH];
   __shared__ float shared_B[TILE_WIDTH][TILE_WIDTH];
 
+  // for simplicity assign
   int bx = blockIdx.x; 
   int by = blockIdx.y;
   int tx = threadIdx.x; 
   int ty = threadIdx.y;
 
-  // calculate the row & column index of the element
+  // calculate the row & column index of element in the tile
   int row = by * TILE_WIDTH + ty;
   int col = bx * TILE_WIDTH + tx;
   float result = 0;
-  // do dot product between row of a and column of b
+  // load the tile data from global memory to shared memory
+  // global memory access is reduced by the factor of 1/TILE_WIDTH
   for(int i = 0; i < width/TILE_WIDTH; ++i){
-    shared_A[ty][tx] = a[row*width + i*TILE_WIDTH + tx];
-    shared_B[ty][tx] = b[(i*TILE_WIDTH + ty)*width + col];
+    shared_A[ty][tx] = data_a[row*width + i*TILE_WIDTH + tx];
+    shared_B[ty][tx] = data_b[(i*TILE_WIDTH + ty)*width + col];
+    // thread barrier. Wait until all the threads have executed.
+    // So all the data is loaded to its respective tiles
     __syncthreads();
 
+    // do the multiplication in shared memory 
+    // to get sub results for the output matrix
+    // multiplication will be performed Matrix Size/TILE_WIDTH
     for(int k = 0; k < TILE_WIDTH; ++k){
       result += shared_A[ty][k] * shared_B[k][tx];
     }
     __syncthreads();
   }
-  ab[row*width + col] = result;
+  data_output[row*width + col] = result;
 }
 
 // compare two matrix to see if they are equal -- for verification
@@ -188,11 +192,10 @@ int main(void){
   cudaEventDestroy(launch_begin);
   cudaEventDestroy(launch_end);
 
-    average_tiled_time /= num_launches;
-    std::cout <<"Average tiled time: " << average_tiled_time << "ms" << std::endl;
+  average_tiled_time /= num_launches;
+  std::cout <<"Average tiled time: " << average_tiled_time << "ms" << std::endl;
 
-
-      // report the effective throughput of each kernel in GFLOPS
+  // report the effective throughput of each kernel in GFLOPS
   // the effective throughput is measured as the number of floating point operations performed per second:
   // (one mul + one add) * N^3
   float num_ops=2 * n * n * n;
@@ -208,13 +211,6 @@ int main(void){
   std::cout << "Performance improvement: simple over sequential " << simple_throughput / seq_throughput << "x" << std::endl;
   std::cout << "Performance improvement: tiled over sequential " << tiled_throughput/seq_throughput << "x" << std::endl;
   std::cout << "Performance improvement: tiled over simple " << tiled_throughput/simple_throughput << "x" << std::endl;
-
-    // report the effective throughput of each kernel in GFLOPS
-    // the effective throughput is measured as the number of floating point operations performed per second:
-    // (one mul + one add) * N^3
-    
-
-    
     
   // deallocate device memory
   cudaFree(d_a);

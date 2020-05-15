@@ -54,15 +54,16 @@ __global__ void globalVectorSum(int *d_output, int *d_input){
     // get the thread number in each block
     int tdx = threadIdx.x;
     
-
-    for (int stride = blockDim.x/2; stride > 0; stride >>= 1){
-        if (tdx < stride){
-            d_input[i] += d_input[i + stride];
+    // divide block into 2 sections to work on
+    // keep dividing the block into 2 until only one element is remaing
+    for (int s = blockDim.x/2; s > 0; s >>= 1){
+        if (tdx < s){
+            d_input[i] += d_input[i + s];
         }
         __syncthreads();
     }
 
-    // thread 0 will write the results
+    // thread 0 will write the results from block dividing to output
     if (tdx == 0){
         d_output[blockIdx.x] = d_input[i];
     }
@@ -75,18 +76,20 @@ __global__ void sharedVectorSum(int *d_output, int *d_input){
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int tdx = threadIdx.x;
 
-    // load data to shared memory
+    // copy all the values of input data from global memory to shared memory
     shared_data[tdx] = d_input[i];
-    __syncthreads();
+    __syncthreads(); // boundary to wait for all threads to finish copying
 
+    // do reduction in shared memory. Similar to global memory method
+    // keep dividing the block into 2 blocks until only one element is left
     for (int stride = blockDim.x/2; stride > 0; stride >>= 1){
         if (tdx < stride){
             shared_data[tdx] += shared_data[tdx + stride];
         }
-        __syncthreads();
+        __syncthreads(); // boundary to wait for all threads to finish dividing
     }
 
-    // thread 0 will write the results from shared memory
+    // thread 0 will write the results from shared memory to global memory
     if (tdx == 0){
         d_output[blockIdx.x] = shared_data[0];
     }
@@ -101,7 +104,7 @@ int sum(int *h_output_vector, int num_element){
 }
 
 int main(){
-    const int num_element = 1024000;
+    const int num_element = 256;
 
     // Host memory allocation
     int *h_input_vector = createVector(num_element);

@@ -90,7 +90,7 @@ __global__ void shared_transpose_matrix(int *output_data, const int *input_data)
     x = blockIdx.y * blockDim.x + threadIdx.x; // swap block x to y
     y = blockIdx.x * blockDim.x + threadIdx.y; // swap block y to x
 
-    // write to output data
+    // write to output data from tiles (shared memory) to the global memory
     for (int i=0; i< blockDim.x; i+=width){
         output_data[(y + i)*width + x] = tile[threadIdx.x][threadIdx.y+i];
     }

@@ -2,7 +2,7 @@ INC="./inc"
 FLAGS=-I$(INC)
 CC=nvcc
 
-all: matrixTranspose vectorReduction matrixMultip run
+all: matrixTranspose vectorReduction matrixMultiplication run clean
 
 matrixTranspose: matrixTranspose.cu
 	$(CC) matrixTranspose.cu -o matrixTranspose.out
@@ -10,13 +10,13 @@ matrixTranspose: matrixTranspose.cu
 vectorReduction: vectorReduction.cu
 	$(CC) vectorReduction.cu -o vectorReduction.out
 
-matrixMultip: matrixMultip.cu
-	$(CC) matrixMultip.cu -o matrixMultip.out
+matrixMultiplication: matrixMultiplication.cu
+	$(CC) matrixMultiplication.cu -o matrixMultiplication.out
 
 run:
 	./matrixTranspose.out
 	./vectorReduction.out
-	./matrixMultip.out
+	./matrixMultiplication.out
 
 clean:
-	rm matrixTranspose.out vectorReduction.out matrixMultip.out
+	rm matrixTranspose.out vectorReduction.out matrixMultiplication.out
