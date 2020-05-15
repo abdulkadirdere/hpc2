@@ -103,7 +103,6 @@ int main() {
     // for (int size=0; size < n; size++ ){
         int WIDTH = matrix_sizes[0];
         int num_element = WIDTH * WIDTH;
-        printf("Matrix size %d x %d \n-------------------------\n" ,WIDTH, WIDTH);
 
         // create the matrix and fill it with random numbers
         int *h_input_matrix = createMatrix(num_element);
@@ -126,7 +125,6 @@ int main() {
 
         float serial_time = 0;
         cudaEventElapsedTime(&serial_time, serial_start, serial_stop);
-        printf("Serial Matrix Transpose Time: %3.6f ms \n", serial_time);
         // printArray(result_matrix, WIDTH);
 
     //-------------- CUDA --------------//
@@ -158,7 +156,6 @@ int main() {
 
         float global_elapsedTime = 0;
         cudaEventElapsedTime(&global_elapsedTime, global_start, global_stop);
-        printf("Global Memory Time elpased: %3.6f ms \n", global_elapsedTime);
         cudaEventDestroy(global_start);
         cudaEventDestroy(global_stop);
 
@@ -172,7 +169,6 @@ int main() {
         float shared_elapsedTime = 0;
         cudaEventElapsedTime(&shared_elapsedTime, shared_start, shared_stop);
 
-        printf( "Shared Memory Time elpased: %3.6f ms \n", shared_elapsedTime );
         cudaEventDestroy(shared_start);
         cudaEventDestroy(shared_stop);
 
@@ -189,6 +185,10 @@ int main() {
 
         std::cout << "Matrix size: " << WIDTH << "x" << WIDTH << std::endl;
         std::cout << "Tile size: " << TILE_WIDTH << "x" << TILE_WIDTH << std::endl;
+
+        printf("Serial Matrix Transpose Time: %3.6f ms \n", serial_time);
+        printf("Global Memory Time elpased: %3.6f ms \n", global_elapsedTime);
+        printf( "Shared Memory Time elpased: %3.6f ms \n", shared_elapsedTime );
 
         std::cout << "\nSpeedup of global memory kernel (CPU/GPU): " << serial_time / global_elapsedTime << " ms" << std::endl;
         std::cout << "Speedup of shared memory kernel (CPU/GPU): " << serial_time / shared_elapsedTime << " ms" << std::endl;

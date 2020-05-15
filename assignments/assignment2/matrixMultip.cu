@@ -82,7 +82,7 @@ int main(void){
   // create a large workload so we can easily measure the
   // performance difference of both implementations
   // note that n measures the width of the matrix, not the number of total elements
-  const size_t n = 1<<8;
+  const size_t n = 1<<9;
   //const dim3 block_size(TILE_WIDTH,TILE_WIDTH);
   const dim3 block_size(BLOCK_SIZE,BLOCK_SIZE);
   const dim3 num_blocks(n / block_size.x, n / block_size.y);
@@ -207,8 +207,8 @@ int main(void){
   std::cout << "Tile size: " << TILE_WIDTH << "x" << TILE_WIDTH << std::endl;
 
   std::cout << "\nThroughput of sequential implementation: " << seq_throughput << " GFLOPS" << std::endl;
-  std::cout << "Throughput of simple kernel: " << simple_throughput << " GFLOPS" << std::endl;
-  std::cout << "Performance improvement: simple over sequential " << simple_throughput / seq_throughput << "x" << std::endl;
+  // std::cout << "Throughput of simple kernel: " << simple_throughput << " GFLOPS" << std::endl;
+  // std::cout << "Performance improvement: simple over sequential " << simple_throughput / seq_throughput << "x" << std::endl;
 
   std::cout << "\nThroughput of Tiled implementation: " << tiled_throughput << " GFLOPS" << std::endl;
   std::cout << "Performance improvement: simple over tiled " << simple_throughput / tiled_throughput << "x" << std::endl;

@@ -139,7 +139,6 @@ int main(void){
   //take the average
   average_seq_time /= num_launches;
   std::cout << " done." << std::endl;
-  std::cout << average_seq_time << "s" << std::endl;
   // launch a single "warm-up" kernel
   matrix_multiply_simple<<<num_blocks,block_size>>>(d_a, d_b, d_c, n);
   cudaMemcpy(h_res, d_c, sizeof(float)*n*n, cudaMemcpyDeviceToHost);
@@ -166,24 +165,12 @@ int main(void){
   }
   average_simple_time /= num_launches;
   std::cout << " done." << std::endl;
-  std::cout << average_simple_time << "ms" << std::endl;
+  std::cout <<"Average sequential time: " << average_seq_time*1000 << "ms" << std::endl;
+  std::cout <<"Average simple time: " << average_simple_time << "ms" << std::endl;
 
-  // report the effective throughput of each kernel in GFLOPS
-  // the effective throughput is measured as the number of floating point operations performed per second:
-  // (one mul + one add) * N^3
-  float num_ops=2 * n * n * n;
-  float seq_throughput = num_ops / average_seq_time / 1000000000.0f;
-  float simple_throughput = num_ops / (average_simple_time / 1000.0f) / 1000000000.0f;
-
-  std::cout << "Matrix size: " << n << "x" << n << std::endl;
-  std::cout << "Tile size: " << TILE_WIDTH << "x" << TILE_WIDTH << std::endl;
-  std::cout << "Throughput of sequential implementation: " << seq_throughput << " GFLOPS" << std::endl;
-  std::cout << "Throughput of simple kernel: " << simple_throughput << " GFLOPS" << std::endl;
-  std::cout << "Performance improvement: simple over seqential " << simple_throughput / seq_throughput << "x" << std::endl;
-
-    //Start Code
+//-------------- Tiled Matrix Multiplication --------------//
     float average_tiled_time = 0;
-    std::cout << "Timing tiled implementation...";
+    // std::cout << "Timing tiled implementation...";
     for(int i = 0; i < num_launches; ++i){
       // record a CUDA event immediately before and after the kernel launch
       cudaEventRecord(launch_begin,0);
@@ -201,30 +188,34 @@ int main(void){
   cudaEventDestroy(launch_begin);
   cudaEventDestroy(launch_end);
 
-
-    // clock_t time;
-    // std::cout << "\nTiming Tiled implementation...";
-    // for(int i = 0; i < num_launches; ++i){
-    //   time = clock();
-    //   matrix_multiply_shared<<<num_blocks,block_size>>>(d_a, d_b, d_c, n);
-    //   time = clock() - time;
-    //   average_tiled_time += (((float)time)/CLOCKS_PER_SEC);
-    // }
-
     average_tiled_time /= num_launches;
-    std::cout << " done." << std::endl;
-    std::cout << average_tiled_time << "ms" << std::endl;
+    std::cout <<"Average tiled time: " << average_tiled_time << "ms" << std::endl;
+
+
+      // report the effective throughput of each kernel in GFLOPS
+  // the effective throughput is measured as the number of floating point operations performed per second:
+  // (one mul + one add) * N^3
+  float num_ops=2 * n * n * n;
+  float seq_throughput = num_ops / average_seq_time / 1000000000.0f;
+  float simple_throughput = num_ops / (average_simple_time / 1000.0f) / 1000000000.0f;
+  float tiled_throughput = num_ops / (average_tiled_time / 1000.0f) / 1000000000.0f;
+
+  std::cout << "\nMatrix size: " << n << "x" << n << std::endl;
+  std::cout << "Tile size: " << TILE_WIDTH << "x" << TILE_WIDTH << std::endl;
+  std::cout << "\nThroughput of sequential implementation: " << seq_throughput << " GFLOPS" << std::endl;
+  std::cout << "Throughput of simple kernel: " << simple_throughput << " GFLOPS" << std::endl;
+  std::cout << "Throughput of tiled kernel: " << tiled_throughput << " GFLOPS" << std::endl;
+  std::cout << "Performance improvement: simple over sequential " << simple_throughput / seq_throughput << "x" << std::endl;
+  std::cout << "Performance improvement: tiled over sequential " << tiled_throughput/seq_throughput << "x" << std::endl;
+  std::cout << "Performance improvement: tiled over simple " << tiled_throughput/simple_throughput << "x" << std::endl;
 
     // report the effective throughput of each kernel in GFLOPS
     // the effective throughput is measured as the number of floating point operations performed per second:
     // (one mul + one add) * N^3
-    float tiled_throughput = num_ops / (average_tiled_time / 1000.0f) / 1000000000.0f;
+    
 
-    std::cout << "Matrix size: " << n << "x" << n << std::endl;
-    std::cout << "Tile size: " << TILE_WIDTH << "x" << TILE_WIDTH << std::endl;
-    std::cout << "Throughput of tiled kernel: " << tiled_throughput << " GFLOPS" << std::endl;
-    std::cout << "Performance improvement: simple over seqential " << tiled_throughput/simple_throughput << "x" << std::endl;
-
+    
+    
   // deallocate device memory
   cudaFree(d_a);
   cudaFree(d_b);
