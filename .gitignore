@@ -7,5 +7,3 @@
 *.out
 !*.cu
 
-assignments/assignment2/transpose
-assignments/assignment2/vect

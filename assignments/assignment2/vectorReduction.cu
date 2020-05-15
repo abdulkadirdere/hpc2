@@ -1,13 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <iostream>
+
+const int THREAD_SIZE = 1024 * sizeof(int);
 
 int randomNumberGeneration(int upperBound, int lowerBound) {
+    // creates a random integer within the bounds
     int num = (rand() % (upperBound - lowerBound + 1)) + lowerBound;
     return num;
 }
 
 int *createData(int *vector, int num_element) {
+    // creates random integer data for the vector
     for (int i = 0; i < num_element; i++) {
         vector[i] = randomNumberGeneration(9, 0);
     }
@@ -22,12 +27,14 @@ int *createVector(int num_element){
 }
 
 int *allocateVector(int num_element) {
+    // allocates space for the vector
     int *vector = (int *)malloc(num_element * sizeof(int *));
     return vector;
 }
 
 int serialVectorSum(int *h_input_vector, int num_element){
     int sum = 0;
+    // sums each element of the vector until end of number of elements
     for (int i=0; i < num_element; i++){
         sum = sum + h_input_vector[i];
     }
@@ -42,17 +49,21 @@ void printVector(int *vector, int num_element) {
 }
 
 __global__ void globalVectorSum(int *d_output, int *d_input){
+    // get the total thread number
     int i = blockDim.x * blockIdx.x + threadIdx.x;
+    // get the thread number in each block
     int tdx = threadIdx.x;
     
-    for (int stride = blockDim.x/2; stride > 0; stride >>= 1){
-        if (tdx < stride){
-            d_input[i] += d_input[i + stride];
+    // divide block into 2 sections to work on
+    // keep dividing the block into 2 until only one element is remaing
+    for (int s = blockDim.x/2; s > 0; s >>= 1){
+        if (tdx < s){
+            d_input[i] += d_input[i + s];
         }
         __syncthreads();
     }
 
-    // thread 0 will write the results
+    // thread 0 will write the results from block dividing to output
     if (tdx == 0){
         d_output[blockIdx.x] = d_input[i];
     }
@@ -60,23 +71,25 @@ __global__ void globalVectorSum(int *d_output, int *d_input){
 
 __global__ void sharedVectorSum(int *d_output, int *d_input){
     // shared data is allocated from kernel
-    extern __shared__ int shared_data[];
+    __shared__ int shared_data[THREAD_SIZE];
 
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int tdx = threadIdx.x;
 
-    // load data to shared memory
+    // copy all the values of input data from global memory to shared memory
     shared_data[tdx] = d_input[i];
-    __syncthreads();
+    __syncthreads(); // boundary to wait for all threads to finish copying
 
+    // do reduction in shared memory. Similar to global memory method
+    // keep dividing the block into 2 blocks until only one element is left
     for (int stride = blockDim.x/2; stride > 0; stride >>= 1){
         if (tdx < stride){
             shared_data[tdx] += shared_data[tdx + stride];
         }
-        __syncthreads();
+        __syncthreads(); // boundary to wait for all threads to finish dividing
     }
 
-    // thread 0 will write the results from shared memory
+    // thread 0 will write the results from shared memory to global memory
     if (tdx == 0){
         d_output[blockIdx.x] = shared_data[0];
     }
@@ -91,7 +104,7 @@ int sum(int *h_output_vector, int num_element){
 }
 
 int main(){
-    const int num_element = 1024000;
+    const int num_element = 256;
 
     // Host memory allocation
     int *h_input_vector = createVector(num_element);
@@ -112,8 +125,7 @@ int main(){
 
     float serial_time = 0;
     cudaEventElapsedTime(&serial_time, serial_start, serial_stop);
-    printf("Serial Matrix Transpose Time: %3.6f ms \n", serial_time);
-    printf("Serial Sum: %d\n", serial_sum);
+    // printf("Serial Sum: %d\n", serial_sum);
     cudaEventDestroy(serial_start);
     cudaEventDestroy(serial_stop);
 
@@ -151,32 +163,53 @@ int main(){
 
     float global_elapsedTime = 0;
     cudaEventElapsedTime(&global_elapsedTime, global_start, global_stop);
-    printf("Global Memory Time elpased: %3.6f ms \n", global_elapsedTime);
     cudaEventDestroy(global_start);
     cudaEventDestroy(global_stop);
     cudaMemcpy(h_output_vector, d_output_vector, memory_space_required, cudaMemcpyDeviceToHost);
     
     int global_sum = sum(h_output_vector, num_element);
-    printf("Global Memory Sum: %d \n", global_sum);
+    // printf("Global Memory Sum: %d \n", global_sum);
 
     //-------------- CUDA Vector Summation Shared Memory --------------//
     // copy memory from host to device
     cudaMemcpy(d_input_vector, h_input_vector, memory_space_required, cudaMemcpyHostToDevice);
     // shared vector kernel
     cudaEventRecord(shared_start);
-    sharedVectorSum<<<NUM_BLOCKS, NUM_THREADS, NUM_THREADS * sizeof(int)>>>(d_output_vector, d_input_vector);
+    sharedVectorSum<<<NUM_BLOCKS, NUM_THREADS>>>(d_output_vector, d_input_vector);
     cudaEventRecord(shared_stop);
     cudaEventSynchronize(shared_stop);
 
     float shared_elapsedTime = 0;
     cudaEventElapsedTime(&shared_elapsedTime, shared_start, shared_stop);
-    printf("Shared Memory Time elpased: %3.6f ms \n", shared_elapsedTime);
     cudaEventDestroy(shared_start);
     cudaEventDestroy(shared_stop);
 
     cudaMemcpy(h_output_vector, d_output_vector, memory_space_required, cudaMemcpyDeviceToHost);
     int shared_sum = sum(h_output_vector, num_element);
-    printf("Shared Memory Sum: %d \n", shared_sum);
+    // printf("Shared Memory Sum: %d \n", shared_sum);
+
+    //-------------- CUDA Performance Metrics --------------//
+    float num_ops= num_element; // every element swap once
+  
+    float serial_throughput = num_ops / (serial_time / 1000.0f) / 1000000000.0f;
+    float global_throughput = num_ops / (global_elapsedTime / 1000.0f) / 1000000000.0f;
+    float shared_throughput = num_ops / (shared_elapsedTime / 1000.0f) / 1000000000.0f;
+
+    std::cout << "Vector size: " << num_element << std::endl;
+
+    printf("\nSerial Matrix Transpose Time: %3.6f ms \n", serial_time);
+    printf("Global Memory Time elpased: %3.6f ms \n", global_elapsedTime);
+    printf("Shared Memory Time elpased: %3.6f ms \n", shared_elapsedTime);
+
+    std::cout << "\nSpeedup of global memory kernel (CPU/GPU): " << serial_time / global_elapsedTime << " ms" << std::endl;
+    std::cout << "Speedup of shared memory kernel (CPU/GPU): " << serial_time / shared_elapsedTime << " ms" << std::endl;
+  
+    std::cout << "\nThroughput of serial implementation: " << serial_throughput << " GFLOPS" << std::endl;
+    std::cout << "Throughput of global memory kernel: " << global_throughput << " GFLOPS" << std::endl;
+    std::cout << "Throughput of shared memory kernel: " << shared_throughput << " GFLOPS" << std::endl;
+    std::cout << "Performance improvement: simple over global " << serial_throughput / global_throughput << "x" << std::endl;
+    std::cout << "Performance improvement: simple over shared " << serial_throughput / shared_throughput << "x" << std::endl;
+    std::cout << "Performance improvement: global over shared " << global_throughput / shared_throughput << "x" << std::endl;
 
     //-------------- Free Memory --------------//
     free(h_input_vector);
