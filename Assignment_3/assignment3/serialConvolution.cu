@@ -9,17 +9,28 @@
 #include <sys/time.h>
 #include <cuda_runtime.h>
 
-const int size=3;
-const int mask_size = 3;
-const int output_size = size * mask_size;
+#define length(arr) ((int) (sizeof (arr) / sizeof (arr)[0]))
 
-const int averaging[mask_size][mask_size] = {
+const int size=5;
+const int mask_size = 3;
+const int boundary = floor(mask_size/2);
+const int output_size = size + 2*boundary;
+
+const int mask[3][3] = {
     {1, 1, 1},
     {1, 1, 1},
     {1, 1, 1},
 };
 
-// const int averaging[mask_size][mask_size] = {
+// const int mask[5][5] = {
+//     {1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1},
+// };
+
+// const int averaging[3][3] = {
 //     {2, 2, 2},
 //     {2, 2, 2},
 //     {2, 2, 2},
@@ -59,40 +70,40 @@ int **createData(int **array, int size, int dimension) {
 }
 
 int **padArray(int **input, int **output) {
-    int range = output_size - mask_size;
+    int range = output_size - boundary;
     // printf("%d \n", range);
 
     // pad the array
-    for (int i = size; i < range; i++) {
-        for (int j = size; j < range; j++) {
-            output[i][j] = input[i-mask_size][j-mask_size];
+    for (int i = boundary; i < range; i++) {
+        for (int j = boundary; j < range; j++) {
+            output[i][j] = input[i-boundary][j-boundary];
         }
     }
     return output;
 }
 
 int **unpad(int **input, int **output) {
-    int range = output_size - mask_size;
+    int range = output_size - boundary;
 
     // unpad the array
     for (int i = 0; i < range; i++) {
         for (int j = 0; j < range; j++) {
-            output[i][j] = input[i+mask_size][j+mask_size];
+            output[i][j] = input[i+boundary][j+boundary];
         }
     }
     return output;
 }
 
 
-int applyMask(int **array, int row, int col, const int mask[mask_size][mask_size]){
-    int value = 0;
-    // int range = output_size - mask_size;
+int applyMask(int **array, int row, int col){
+    // int range = output_size - boundary;
+    int n_size = boundary * 2 + 1;
     // neighbours of giving location
-    int **neighbours = createMatrix(mask_size, mask_size);
+    int **neighbours = createMatrix(n_size, n_size);
     
     // for (int i=row; i < range; i++){
     //     for(int j=col; j < range; j++){
-    //         neighbours[row-mask_size][col-mask_size] = array[i-1][j-1]; // array is wrong
+    //         neighbours[row-boundary][col-boundary] = array[i-1][j-1]; // array is wrong
     //     }
     // }
 
@@ -109,27 +120,28 @@ int applyMask(int **array, int row, int col, const int mask[mask_size][mask_size
     neighbours[2][2] = array[row+1][col+1]; //bottom_right
 
 
-    int **convolution = createMatrix(mask_size, mask_size);
+    int **convolution = createMatrix(n_size, n_size);
+    int value = 0;
 
-    for (int r=0; r<mask_size; r++){
-        for(int c=0; c<mask_size; c++){
+    for (int r=0; r<3; r++){
+        for(int c=0; c<3; c++){
             convolution[r][c] = mask[r][c] * neighbours[r][c];
             value = value + convolution[r][c];
         }
     }
     // printf("%d \n", value);
-    // printArray(convolution, mask_size, mask_size);
+    // printArray(convolution, boundary, boundary);
 
     return value;
 }
 
 int **serial_convolution(int **input, int **output){
-    int range = output_size - mask_size;
+    int range = output_size - boundary;
     // printf("%d ", range);
 
-    for (int i=size; i<range; i++){
-        for (int j=size; j<range; j++){
-            output[i][j] = applyMask(input, i, j, averaging);
+    for (int i = boundary; i<range; i++){
+        for (int j = boundary; j<range; j++){
+            output[i][j] = applyMask(input, i, j);
         }
     }
     return output;
@@ -137,7 +149,6 @@ int **serial_convolution(int **input, int **output){
 
 
 int main(void){
-
     int **input = createMatrix(size,size);
     int **padded = createMatrix(output_size, output_size);
     int **output = createMatrix(output_size, output_size);
@@ -145,15 +156,19 @@ int main(void){
 
     input = createData(input, size, size);
     // printArray(input, size, size);
+    printf("Boundary size: %d \n", boundary);
 
     // pad the given array
     padded = padArray(input, padded);
 
-    // printArray(padded, output_size, output_size);
+    printArray(padded, output_size, output_size);
+    printf("padded output \n");
 
     output = serial_convolution(padded, output);
+    printArray(output, output_size, output_size);
 
     unpadded = unpad(output, unpadded);
+    printf("unpadded output \n");
     printArray(unpadded, size, size);
 
 }
