@@ -11,10 +11,10 @@
 
 #define length(arr) ((int) (sizeof (arr) / sizeof (arr)[0]))
 
-const int size=5;
+const int size=3;
 const int mask_size = 3;
-const int boundary = floor(mask_size/2);
-const int output_size = size + 2*boundary;
+const int offset = floor(mask_size/2);
+const int output_size = size + 2*offset;
 
 const int mask[3][3] = {
     {1, 1, 1},
@@ -70,25 +70,25 @@ int **createData(int **array, int size, int dimension) {
 }
 
 int **padArray(int **input, int **output) {
-    int range = output_size - boundary;
+    int range = output_size - offset;
     // printf("%d \n", range);
 
     // pad the array
-    for (int i = boundary; i < range; i++) {
-        for (int j = boundary; j < range; j++) {
-            output[i][j] = input[i-boundary][j-boundary];
+    for (int i = offset; i < range; i++) {
+        for (int j = offset; j < range; j++) {
+            output[i][j] = input[i-offset][j-offset];
         }
     }
     return output;
 }
 
 int **unpad(int **input, int **output) {
-    int range = output_size - boundary;
+    int range = output_size - offset;
 
     // unpad the array
     for (int i = 0; i < range; i++) {
         for (int j = 0; j < range; j++) {
-            output[i][j] = input[i+boundary][j+boundary];
+            output[i][j] = input[i+offset][j+offset];
         }
     }
     return output;
@@ -96,16 +96,18 @@ int **unpad(int **input, int **output) {
 
 
 int applyMask(int **array, int row, int col){
-    // int range = output_size - boundary;
-    int n_size = boundary * 2 + 1;
+    int n_size = offset * 2 + 1;
+
     // neighbours of giving location
     int **neighbours = createMatrix(n_size, n_size);
-    
+
+    int range = output_size - offset;
     // for (int i=row; i < range; i++){
     //     for(int j=col; j < range; j++){
-    //         neighbours[row-boundary][col-boundary] = array[i-1][j-1]; // array is wrong
+    //         neighbours[row-offset][col-offset] = array[row-offset][col-offset];
     //     }
     // }
+    // printArray(neighbours, n_size, n_size);
 
     neighbours[0][0] = array[row-1][col-1]; // top_left
     neighbours[0][1] = array[row-1][col]; // top_middle
@@ -130,17 +132,17 @@ int applyMask(int **array, int row, int col){
         }
     }
     // printf("%d \n", value);
-    // printArray(convolution, boundary, boundary);
+    // printArray(convolution, offset, offset);
 
     return value;
 }
 
 int **serial_convolution(int **input, int **output){
-    int range = output_size - boundary;
+    int range = output_size - offset;
     // printf("%d ", range);
 
-    for (int i = boundary; i<range; i++){
-        for (int j = boundary; j<range; j++){
+    for (int i = offset; i<range; i++){
+        for (int j = offset; j<range; j++){
             output[i][j] = applyMask(input, i, j);
         }
     }
@@ -156,7 +158,7 @@ int main(void){
 
     input = createData(input, size, size);
     // printArray(input, size, size);
-    printf("Boundary size: %d \n", boundary);
+    printf("offset size: %d \n", offset);
 
     // pad the given array
     padded = padArray(input, padded);
