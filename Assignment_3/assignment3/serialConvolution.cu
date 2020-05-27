@@ -189,7 +189,7 @@ int main(int argc, char **argv){
     // printf("offset size: %d \n", offset);
 
     // // pad the given array
-    // padded = padArray(input, padded);
+    padded = padArray(hData, padded);
 
     // printArray(padded, output_size, output_size);
     // printf("padded output \n");
