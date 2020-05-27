@@ -176,11 +176,12 @@ int main(int argc, char **argv){
         unsigned int size = width * height * sizeof(float);
         printf("Loaded '%s', %d x %d pixels\n", imageFilename, width, height);
 
+        printArray(hData, 512);
 
-    int **input = createMatrix(size,size);
-    int **padded = createMatrix(output_size, output_size);
-    int **output = createMatrix(output_size, output_size);
-    int **unpadded = createMatrix(output_size, output_size);
+    // int **input = createMatrix(size,size);
+    // int **padded = createMatrix(output_size, output_size);
+    // int **output = createMatrix(output_size, output_size);
+    // int **unpadded = createMatrix(output_size, output_size);
 
     // // mask = {
     // //     {1, 1, 1},
@@ -192,10 +193,10 @@ int main(int argc, char **argv){
     // // printArray(input, size, size);
     // printf("offset size: %d \n", offset);
 
-    // // pad the given array
-    // padded = padArray(input, padded);
+    // pad the given array
+    padded = padArray(input, padded);
 
-    // printArray(padded, output_size, output_size);
+    printArray(padded, output_size, output_size);
     // printf("padded output \n");
 
     // output = serial_convolution(padded, output);
