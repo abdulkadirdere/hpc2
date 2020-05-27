@@ -8,18 +8,20 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <cuda_runtime.h>
-#include "helper/inc/helper_functions.h"
-#include "helper/inc/helper_cuda.h"
+
+#include "helper/inc/helper_functions.h" // includes cuda.h and cuda_runtime_api.h
+#include "helper/inc/helper_cuda.h" // helper functions for CUDA error check
+
 
 #define length(arr) ((int) (sizeof (arr) / sizeof (arr)[0]))
 
 
 const int size=3;
-const int MASK_SIZE = 3;
-const int offset = floor(MASK_SIZE/2);
+const int mask_size = 3;
+const int offset = floor(mask_size/2);
 const int output_size = size + 2*offset;
 
-const int mask[MASK_SIZE][MASK_SIZE] = {
+const int mask[3][3] = {
     {1, 1, 1},
     {1, 1, 1},
     {1, 1, 1},
@@ -40,10 +42,10 @@ const int mask[MASK_SIZE][MASK_SIZE] = {
 // };
 
 
-void printArray(int **array, int r, int c) {
+void printArray(double **array, int r, int c) {
     for (int i = 0; i < r; i++) {
         for (int j = 0; j < c; j++) {
-            printf("%d ", array[i][j]);
+            printf("%3.6f ", array[i][j]);
         }
         printf("\n");
     }
@@ -54,16 +56,16 @@ int randomNumberGeneration(int upperBound, int lowerBound) {
     return num;
 }
 
-int **createMatrix(int m, int n) {
-    int **array = (int **)malloc(m * sizeof(int *));
+double **createMatrix(int m, int n) {
+    double **array = (double **)malloc(m * sizeof(double *));
     for (int i = 0; i < m; i++) {
-        array[i] = (int *)malloc(n * sizeof(int));
+        array[i] = (double *)malloc(n * sizeof(double));
     }
 
     return array;
 }
 
-int **createData(int **array, int size, int dimension) {
+double **createData(double **array, int size, int dimension) {
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < dimension; j++) {
             array[i][j] = randomNumberGeneration(9, 1);
@@ -72,7 +74,7 @@ int **createData(int **array, int size, int dimension) {
     return array;
 }
 
-int **padArray(int **input, int **output) {
+double **padArray(double **input, double **output) {
     int range = output_size - offset;
     // printf("%d \n", range);
 
@@ -85,7 +87,7 @@ int **padArray(int **input, int **output) {
     return output;
 }
 
-int **unpad(int **input, int **output) {
+double **unpad(double **input, double **output) {
     int range = output_size - offset;
 
     // unpad the array
@@ -98,11 +100,11 @@ int **unpad(int **input, int **output) {
 }
 
 
-int applyMask(int **array, int row, int col){
-    int n_size = offset * 2 + 1;
+double applyMask(double **array, int row, int col){
+    double n_size = offset * 2 + 1;
 
     // neighbours of giving location
-    int **neighbours = createMatrix(n_size, n_size);
+    double **neighbours = createMatrix(n_size, n_size);
 
     // int range = output_size - offset;
     // for (int i=row; i < range; i++){
@@ -125,8 +127,8 @@ int applyMask(int **array, int row, int col){
     neighbours[2][2] = array[row+1][col+1]; //bottom_right
 
 
-    int **convolution = createMatrix(n_size, n_size);
-    int value = 0;
+    double **convolution = createMatrix(n_size, n_size);
+    double value = 0;
 
     for (int r=0; r<3; r++){
         for(int c=0; c<3; c++){
@@ -140,7 +142,7 @@ int applyMask(int **array, int row, int col){
     return value;
 }
 
-int **serial_convolution(int **input, int **output){
+double **serial_convolution(double **input, double **output){
     int range = output_size - offset;
     // printf("%d ", range);
 
@@ -159,44 +161,35 @@ int main(int argc, char **argv){
 
     const char *imageFilename = "lena_bw.pgm";
 
+    // load image from disk
+    float *hData = NULL;
+    unsigned int width, height;
+    char *imagePath = sdkFindFilePath(imageFilename, argv[0]);
 
-        // load image from disk
-        float *hData = NULL;
-        unsigned int width, height;
-        char *imagePath = sdkFindFilePath(imageFilename, argv[0]);
-    
-        if (imagePath == NULL)
-        {
-            printf("Unable to source image file: %s\n", imageFilename);
-            exit(EXIT_FAILURE);
-        }
-    
-        sdkLoadPGM(imagePath, &hData, &width, &height);
-    
-        unsigned int size = width * height * sizeof(float);
-        printf("Loaded '%s', %d x %d pixels\n", imageFilename, width, height);
+    if (imagePath == NULL)
+    {
+        printf("Unable to source image file: %s\n", imageFilename);
+        exit(EXIT_FAILURE);
+    }
 
-        printArray(hData, 512);
+    sdkLoadPGM(imagePath, &hData, &width, &height);
 
-    // int **input = createMatrix(size,size);
-    // int **padded = createMatrix(output_size, output_size);
-    // int **output = createMatrix(output_size, output_size);
-    // int **unpadded = createMatrix(output_size, output_size);
+    unsigned int size = width * height * sizeof(float);
+    printf("Loaded '%s', %d x %d pixels\n", imageFilename, width, height);
 
-    // // mask = {
-    // //     {1, 1, 1},
-    // //     {1, 1, 1},
-    // //     {1, 1, 1},
-    // // };
+    // double **input = createMatrix(size,size);
+    // double **padded = createMatrix(output_size, output_size);
+    // double **output = createMatrix(output_size, output_size);
+    // double **unpadded = createMatrix(output_size, output_size);
 
     // input = createData(input, size, size);
     // // printArray(input, size, size);
     // printf("offset size: %d \n", offset);
 
-    // pad the given array
-    padded = padArray(input, padded);
+    // // pad the given array
+    // padded = padArray(input, padded);
 
-    printArray(padded, output_size, output_size);
+    // printArray(padded, output_size, output_size);
     // printf("padded output \n");
 
     // output = serial_convolution(padded, output);
