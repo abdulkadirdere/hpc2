@@ -9,6 +9,9 @@
 #include <sys/time.h>
 #include <cuda_runtime.h>
 
+#include "helper/inc/helper_functions.h" // includes cuda.h and cuda_runtime_api.h
+#include "helper/inc/helper_cuda.h" // helper functions for CUDA error check
+
 #define length(arr) ((int) (sizeof (arr) / sizeof (arr)[0]))
 
 const int size=3;
@@ -16,7 +19,7 @@ const int mask_size = 3;
 const int offset = floor(mask_size/2);
 const int output_size = size + 2*offset;
 
-const int mask[3][3] = {
+const double mask[3][3] = {
     {1, 1, 1},
     {1, 1, 1},
     {1, 1, 1},
@@ -40,7 +43,7 @@ const int mask[3][3] = {
 void printArray(double **array, int r, int c) {
     for (int i = 0; i < r; i++) {
         for (int j = 0; j < c; j++) {
-            printf("%3.6f ", array[i][j]);
+            printf("%.0f ", array[i][j]);
         }
         printf("\n");
     }
@@ -96,12 +99,12 @@ double **unpad(double **input, double **output) {
 
 
 double applyMask(double **array, int row, int col){
-    double n_size = offset * 2 + 1;
+    int n_size = offset * 2 + 1;
 
     // neighbours of giving location
     double **neighbours = createMatrix(n_size, n_size);
 
-    // int range = output_size - offset;
+    int range = output_size - offset;
     // for (int i=row; i < range; i++){
     //     for(int j=col; j < range; j++){
     //         neighbours[row-offset][col-offset] = array[row-offset][col-offset];
@@ -123,7 +126,7 @@ double applyMask(double **array, int row, int col){
 
 
     double **convolution = createMatrix(n_size, n_size);
-    double value = 0;
+    int value = 0;
 
     for (int r=0; r<3; r++){
         for(int c=0; c<3; c++){
@@ -151,26 +154,51 @@ double **serial_convolution(double **input, double **output){
 
 
 int main(int argc, char **argv){
-    double **input = createMatrix(size,size);
-    double **padded = createMatrix(output_size, output_size);
-    double **output = createMatrix(output_size, output_size);
-    double **unpadded = createMatrix(output_size, output_size);
+    int devID = findCudaDevice(0, 0);
+    cudaGetDeviceProperties(0, 0);
 
-    input = createData(input, size, size);
-    // printArray(input, size, size);
-    printf("offset size: %d \n", offset);
+    const char *imageFilename = "lena_bw.pgm";
 
-    // pad the given array
-    padded = padArray(input, padded);
+    // load image from disk
+    float *hData = NULL;
+    unsigned int width, height;
+    char *imagePath = sdkFindFilePath(imageFilename, argv[0]);
 
-    printArray(padded, output_size, output_size);
-    printf("padded output \n");
+    if (imagePath == NULL)
+    {
+        printf("Unable to source image file: %s\n", imageFilename);
+        exit(EXIT_FAILURE);
+    }
 
-    output = serial_convolution(padded, output);
-    printArray(output, output_size, output_size);
+    sdkLoadPGM(imagePath, &hData, &width, &height);
 
-    unpadded = unpad(output, unpadded);
-    printf("unpadded output \n");
-    printArray(unpadded, size, size);
+    unsigned int size = width * height * sizeof(float);
+    printf("Loaded '%s', %d x %d pixels\n", imageFilename, width, height);
+
+
+    // printArray(hData, width, width);
+
+
+    // double **input = createMatrix(size,size);
+    // double **padded = createMatrix(output_size, output_size);
+    // double **output = createMatrix(output_size, output_size);
+    // double **unpadded = createMatrix(output_size, output_size);
+
+    // input = createData(input, size, size);
+    // // printArray(input, size, size);
+    // printf("offset size: %d \n", offset);
+
+    // // pad the given array
+    // padded = padArray(input, padded);
+
+    // printArray(padded, output_size, output_size);
+    // printf("padded output \n");
+
+    // output = serial_convolution(padded, output);
+    // printArray(output, output_size, output_size);
+
+    // unpadded = unpad(output, unpadded);
+    // printf("unpadded output \n");
+    // printArray(unpadded, size, size);
 
 }

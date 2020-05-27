@@ -42,7 +42,7 @@ const int mask[3][3] = {
 // };
 
 
-void printArray(double **array, int r, int c) {
+void printArray(float **array, int r, int c) {
     for (int i = 0; i < r; i++) {
         for (int j = 0; j < c; j++) {
             printf("%3.6f ", array[i][j]);
@@ -56,16 +56,16 @@ int randomNumberGeneration(int upperBound, int lowerBound) {
     return num;
 }
 
-double **createMatrix(int m, int n) {
-    double **array = (double **)malloc(m * sizeof(double *));
+float **createMatrix(int m, int n) {
+    float **array = (float **)malloc(m * sizeof(float *));
     for (int i = 0; i < m; i++) {
-        array[i] = (double *)malloc(n * sizeof(double));
+        array[i] = (float *)malloc(n * sizeof(float));
     }
 
     return array;
 }
 
-double **createData(double **array, int size, int dimension) {
+float **createData(float **array, int size, int dimension) {
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < dimension; j++) {
             array[i][j] = randomNumberGeneration(9, 1);
@@ -74,7 +74,7 @@ double **createData(double **array, int size, int dimension) {
     return array;
 }
 
-double **padArray(double **input, double **output) {
+float **padArray(float **input, float **output) {
     int range = output_size - offset;
     // printf("%d \n", range);
 
@@ -87,7 +87,7 @@ double **padArray(double **input, double **output) {
     return output;
 }
 
-double **unpad(double **input, double **output) {
+float **unpad(float **input, float **output) {
     int range = output_size - offset;
 
     // unpad the array
@@ -100,11 +100,11 @@ double **unpad(double **input, double **output) {
 }
 
 
-double applyMask(double **array, int row, int col){
-    double n_size = offset * 2 + 1;
+float applyMask(float **array, int row, int col){
+    float n_size = offset * 2 + 1;
 
     // neighbours of giving location
-    double **neighbours = createMatrix(n_size, n_size);
+    float **neighbours = createMatrix(n_size, n_size);
 
     // int range = output_size - offset;
     // for (int i=row; i < range; i++){
@@ -127,8 +127,8 @@ double applyMask(double **array, int row, int col){
     neighbours[2][2] = array[row+1][col+1]; //bottom_right
 
 
-    double **convolution = createMatrix(n_size, n_size);
-    double value = 0;
+    float **convolution = createMatrix(n_size, n_size);
+    float value = 0;
 
     for (int r=0; r<3; r++){
         for(int c=0; c<3; c++){
@@ -142,7 +142,7 @@ double applyMask(double **array, int row, int col){
     return value;
 }
 
-double **serial_convolution(double **input, double **output){
+float **serial_convolution(float **input, float **output){
     int range = output_size - offset;
     // printf("%d ", range);
 
@@ -177,6 +177,10 @@ int main(int argc, char **argv){
     unsigned int size = width * height * sizeof(float);
     printf("Loaded '%s', %d x %d pixels\n", imageFilename, width, height);
 
+    // allocate mask
+
+
+
     // double **input = createMatrix(size,size);
     // double **padded = createMatrix(output_size, output_size);
     // double **output = createMatrix(output_size, output_size);
@@ -186,8 +190,8 @@ int main(int argc, char **argv){
     // // printArray(input, size, size);
     // printf("offset size: %d \n", offset);
 
-    // // pad the given array
-    // padded = padArray(input, padded);
+    // pad the given array
+    padded = padArray(input, padded);
 
     // printArray(padded, output_size, output_size);
     // printf("padded output \n");
