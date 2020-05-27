@@ -8,15 +8,18 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <cuda_runtime.h>
+#include "helper/inc/helper_functions.h"
+#include "helper/inc/helper_cuda.h"
 
 #define length(arr) ((int) (sizeof (arr) / sizeof (arr)[0]))
 
+
 const int size=3;
-const int mask_size = 3;
-const int offset = floor(mask_size/2);
+const int MASK_SIZE = 3;
+const int offset = floor(MASK_SIZE/2);
 const int output_size = size + 2*offset;
 
-const int mask[3][3] = {
+const int mask[MASK_SIZE][MASK_SIZE] = {
     {1, 1, 1},
     {1, 1, 1},
     {1, 1, 1},
@@ -151,26 +154,55 @@ int **serial_convolution(int **input, int **output){
 
 
 int main(int argc, char **argv){
+    int devID = findCudaDevice(0, 0);
+    cudaGetDeviceProperties(0, 0);
+
+    const char *imageFilename = "lena_bw.pgm";
+
+
+        // load image from disk
+        float *hData = NULL;
+        unsigned int width, height;
+        char *imagePath = sdkFindFilePath(imageFilename, argv[0]);
+    
+        if (imagePath == NULL)
+        {
+            printf("Unable to source image file: %s\n", imageFilename);
+            exit(EXIT_FAILURE);
+        }
+    
+        sdkLoadPGM(imagePath, &hData, &width, &height);
+    
+        unsigned int size = width * height * sizeof(float);
+        printf("Loaded '%s', %d x %d pixels\n", imageFilename, width, height);
+
+
     int **input = createMatrix(size,size);
     int **padded = createMatrix(output_size, output_size);
     int **output = createMatrix(output_size, output_size);
     int **unpadded = createMatrix(output_size, output_size);
 
-    input = createData(input, size, size);
-    // printArray(input, size, size);
-    printf("offset size: %d \n", offset);
+    // // mask = {
+    // //     {1, 1, 1},
+    // //     {1, 1, 1},
+    // //     {1, 1, 1},
+    // // };
 
-    // pad the given array
-    padded = padArray(input, padded);
+    // input = createData(input, size, size);
+    // // printArray(input, size, size);
+    // printf("offset size: %d \n", offset);
 
-    printArray(padded, output_size, output_size);
-    printf("padded output \n");
+    // // pad the given array
+    // padded = padArray(input, padded);
 
-    output = serial_convolution(padded, output);
-    printArray(output, output_size, output_size);
+    // printArray(padded, output_size, output_size);
+    // printf("padded output \n");
 
-    unpadded = unpad(output, unpadded);
-    printf("unpadded output \n");
-    printArray(unpadded, size, size);
+    // output = serial_convolution(padded, output);
+    // printArray(output, output_size, output_size);
+
+    // unpadded = unpad(output, unpadded);
+    // printf("unpadded output \n");
+    // printArray(unpadded, size, size);
 
 }
