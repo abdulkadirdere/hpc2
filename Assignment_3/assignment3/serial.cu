@@ -120,15 +120,10 @@ double **unpad(double **input, double **output) {
 double applyMask(double **array, int row, int col){
     int n_size = offset * 2 + 1;
 
-    // neighbours of giving location
+    // neighbours of given location
     double **neighbours = allocateMatrix(n_size, n_size);
 
     int range = padded_size - offset;
-    // for (int i=row; i < range; i++){
-    //     for(int j=col; j < range; j++){
-    //         neighbours[row-offset][col-offset] = array[row-offset][col-offset];
-    //     }
-    // }
 
     neighbours[0][0] = array[row-1][col-1]; // top_left
     neighbours[0][1] = array[row-1][col]; // top_middle
@@ -196,8 +191,8 @@ int main(int argc, char **argv){
 
     // convert image to 2D
     double **image =  convert2D(hData, width, height);
-    // printf("Input image \n");
-    // printArray(image, 10, 10);
+    printf("Input image \n");
+    printArray(image, 10, 10);
 
     // allocate space for padded image
     double **padded = allocateMatrix(padded_size, padded_size);
@@ -214,8 +209,8 @@ int main(int argc, char **argv){
     // unpad the array
     double **unpadded = allocateMatrix(padded_size, padded_size);
     unpadded = unpad(output, unpadded);
-    // printf("unpadded image \n");
-    // printArray(unpadded, 10, 10);
+    printf("unpadded image \n");
+    printArray(unpadded, 10, 10);
 
     // update array
     float *result_image;

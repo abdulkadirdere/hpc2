@@ -12,37 +12,32 @@
 #include "helper/inc/helper_functions.h" // includes cuda.h and cuda_runtime_api.h
 #include "helper/inc/helper_cuda.h" // helper functions for CUDA error check
 
-
-#define length(arr) ((int) (sizeof (arr) / sizeof (arr)[0]))
-
-
-const int size=3;
+const int size=512;
 const int mask_size = 3;
 const int offset = floor(mask_size/2);
-const int output_size = size + 2*offset;
+const int padded_size = size + 2*offset;
 
-const int mask[3][3] = {
-    {1, 1, 1},
-    {1, 1, 1},
-    {1, 1, 1},
+// const double mask[3][3] = {
+//     {1, 1, 1},
+//     {1, 1, 1},
+//     {1, 1, 1},
+// };
+
+// edge detection
+const double mask[3][3] = {
+    {-1, 0, 1},
+    {-2, 0, 2},
+    {-1, 0, 1},
 };
 
-// const int mask[5][5] = {
-//     {1, 1, 1, 1, 1},
-//     {1, 1, 1, 1, 1},
-//     {1, 1, 1, 1, 1},
-//     {1, 1, 1, 1, 1},
-//     {1, 1, 1, 1, 1},
+// sharpenning
+// const double mask[3][3] = {
+//     {-1, -1, -1},
+//     {-1,  9, -1},
+//     {-1, -1, -1},
 // };
 
-// const int averaging[3][3] = {
-//     {2, 2, 2},
-//     {2, 2, 2},
-//     {2, 2, 2},
-// };
-
-
-void printArray(float **array, int r, int c) {
+void printArray(double **array, int r, int c) {
     for (int i = 0; i < r; i++) {
         for (int j = 0; j < c; j++) {
             printf("%3.6f ", array[i][j]);
@@ -51,31 +46,54 @@ void printArray(float **array, int r, int c) {
     }
 }
 
-int randomNumberGeneration(int upperBound, int lowerBound) {
-    int num = (rand() % (upperBound - lowerBound + 1)) + lowerBound;
-    return num;
-}
+double **allocateMatrix(int m, int n) {
+    double **array = (double **)malloc(m * sizeof(double *));
+    for (int i=0; i<m; i++){
+        array[i] = (double *)malloc(n * sizeof(double)); 
+    }
 
-float **createMatrix(int m, int n) {
-    float **array = (float **)malloc(m * sizeof(float *));
-    for (int i = 0; i < m; i++) {
-        array[i] = (float *)malloc(n * sizeof(float));
+    int zero = 0; 
+    for (int i = 0; i <  m; i++){
+        for (int j = 0; j < n; j++) {
+            array[i][j] = zero;
+        }
     }
 
     return array;
 }
 
-float **createData(float **array, int size, int dimension) {
-    for (int i = 0; i < size; i++) {
-        for (int j = 0; j < dimension; j++) {
-            array[i][j] = randomNumberGeneration(9, 1);
+double **convert2D(float *input, unsigned int width, unsigned int height) {
+    double **array = (double **)malloc(width * sizeof(double *));
+    for (int i=0; i<width; i++){
+        array[i] = (double *)malloc(height * sizeof(double)); 
+    }
+
+    int value = 0; 
+    for (int i = 0; i <  width; i++){
+        for (int j = 0; j < height; j++) {
+            array[i][j] = input[value];
+            value++;
         }
     }
     return array;
 }
 
-float **padArray(float **input, float **output) {
-    int range = output_size - offset;
+float *convert1D(double **input, unsigned int width, unsigned int height) {
+    unsigned int size = width * height * sizeof(float);
+    float *array = (float *)malloc(size * sizeof(float));
+
+    int value = 0; 
+    for (int i = 0; i <  width; i++){
+        for (int j = 0; j < height; j++) {
+            array[value] = (float)input[i][j];
+            value++;
+        }
+    }
+    return array;
+}
+
+double **padArray(double **input, double **output) {
+    int range = padded_size - offset;
     // printf("%d \n", range);
 
     // pad the array
@@ -87,8 +105,8 @@ float **padArray(float **input, float **output) {
     return output;
 }
 
-float **unpad(float **input, float **output) {
-    int range = output_size - offset;
+double **unpad(double **input, double **output) {
+    int range = padded_size - offset;
 
     // unpad the array
     for (int i = 0; i < range; i++) {
@@ -99,20 +117,13 @@ float **unpad(float **input, float **output) {
     return output;
 }
 
+double applyMask(double **array, int row, int col){
+    int n_size = offset * 2 + 1;
 
-float applyMask(float **array, int row, int col){
-    float n_size = offset * 2 + 1;
+    // neighbours of given location
+    double **neighbours = allocateMatrix(n_size, n_size);
 
-    // neighbours of giving location
-    float **neighbours = createMatrix(n_size, n_size);
-
-    // int range = output_size - offset;
-    // for (int i=row; i < range; i++){
-    //     for(int j=col; j < range; j++){
-    //         neighbours[row-offset][col-offset] = array[row-offset][col-offset];
-    //     }
-    // }
-    // printArray(neighbours, n_size, n_size);
+    int range = padded_size - offset;
 
     neighbours[0][0] = array[row-1][col-1]; // top_left
     neighbours[0][1] = array[row-1][col]; // top_middle
@@ -126,25 +137,27 @@ float applyMask(float **array, int row, int col){
     neighbours[2][1] = array[row+1][col]; //bottom_middle
     neighbours[2][2] = array[row+1][col+1]; //bottom_right
 
+    // printArray(neighbours, n_size, n_size);
 
-    float **convolution = createMatrix(n_size, n_size);
-    float value = 0;
+    double **convolution = allocateMatrix(n_size, n_size);
+    double value = 0;
 
     for (int r=0; r<3; r++){
         for(int c=0; c<3; c++){
+            // printf("value: %3.6f \n", mask[1][1]);
             convolution[r][c] = mask[r][c] * neighbours[r][c];
             value = value + convolution[r][c];
         }
     }
-    // printf("%d \n", value);
+    // printf("value: %3.6f \n", value);
     // printArray(convolution, offset, offset);
 
     return value;
 }
 
-float **serial_convolution(float **input, float **output){
-    int range = output_size - offset;
-    // printf("%d ", range);
+double **serial_convolution(double **input, double **output){
+    int range = padded_size - offset;
+    // printf("range: %d \n", range);
 
     for (int i = offset; i<range; i++){
         for (int j = offset; j<range; j++){
@@ -153,7 +166,6 @@ float **serial_convolution(float **input, float **output){
     }
     return output;
 }
-
 
 int main(int argc, char **argv){
     int devID = findCudaDevice(0, 0);
@@ -177,30 +189,44 @@ int main(int argc, char **argv){
     unsigned int size = width * height * sizeof(float);
     printf("Loaded '%s', %d x %d pixels\n", imageFilename, width, height);
 
-    // allocate mask
+    // convert image to 2D
+    double **image =  convert2D(hData, width, height);
+    // printf("Input image \n");
+    // printArray(image, 10, 10);
 
+    // allocate space for padded image
+    double **padded = allocateMatrix(padded_size, padded_size);
+    padded = padArray(image, padded);
+    // printf("Padded image \n");
+    // printArray(padded, 10, 10);
 
+    // convolution results
+    double **output = allocateMatrix(padded_size, padded_size);
+    output = serial_convolution(padded, output);
+    // printf("Convolution image \n");
+    // printArray(output, 10, 10);
 
-    // double **input = createMatrix(size,size);
-    // double **padded = createMatrix(output_size, output_size);
-    // double **output = createMatrix(output_size, output_size);
-    // double **unpadded = createMatrix(output_size, output_size);
+    // unpad the array
+    double **unpadded = allocateMatrix(padded_size, padded_size);
+    unpadded = unpad(output, unpadded);
+    printf("unpadded image \n");
+    printArray(unpadded, 10, 10);
 
-    // input = createData(input, size, size);
-    // // printArray(input, size, size);
-    // printf("offset size: %d \n", offset);
+    // update array
+    float *result_image;
+    result_image = convert1D(unpadded, width, height);
 
-    // pad the given array
-    padded = padArray(input, padded);
+    // Write result to file
+    char outputFilename[1024];
+    strcpy(outputFilename, imagePath);
+    strcpy(outputFilename + strlen(imagePath) - 4, "_out.pgm");
+    sdkSavePGM(outputFilename, result_image, width, height);
+    printf("Wrote '%s'\n", outputFilename);
 
-    // printArray(padded, output_size, output_size);
-    // printf("padded output \n");
-
-    // output = serial_convolution(padded, output);
-    // printArray(output, output_size, output_size);
-
-    // unpadded = unpad(output, unpadded);
-    // printf("unpadded output \n");
-    // printArray(unpadded, size, size);
+    free(image);
+    free(padded);
+    free(output);
+    free(unpadded);
+    free(result_image);
 
 }
