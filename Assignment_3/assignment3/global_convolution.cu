@@ -17,21 +17,33 @@ const int mask_size = 3;
 const int offset = floor(mask_size/2);
 const int padded_size = size + 2*offset;
 
-// const double mask[3][3] = {
-//     {1, 1, 1},
-//     {1, 1, 1},
-//     {1, 1, 1},
+const int TILE_WIDTH = 16;
+
+
+__const__ double mask[mask_size][mask_size] = {
+    {1, 1, 1},
+    {1, 1, 1},
+    {1, 1, 1},
+};
+
+// gaussian
+// __const__ double mask[mask_size][mask_size] = {
+//     {0, 0, -1, 0, 0},
+//     {0, -1, -2, -1, 0},
+//     {-1, -2, 16, -2, -1},
+//     {0, -1, -2, -1, 0},
+//     {0, 0, -1, 0, 0},
 // };
 
 // edge detection
-const double mask[3][3] = {
-    {-1, 0, 1},
-    {-2, 0, 2},
-    {-1, 0, 1},
-};
+// __const__ double mask[mask_size][mask_size] = {
+//     {-1, 0, 1},
+//     {-2, 0, 2},
+//     {-1, 0, 1},
+// };
 
 // sharpenning
-// const double mask[3][3] = {
+// __const__ double mask[mask_size][mask_size] = {
 //     {-1, -1, -1},
 //     {-1,  9, -1},
 //     {-1, -1, -1},
@@ -45,6 +57,15 @@ void printArray(double **array, int r, int c) {
         printf("\n");
     }
 }
+
+// void printArray(float *array, int r, int c) {
+//     for (int i = 0; i < r; i++) {
+//         for (int j = 0; j < c; j++) {
+//             printf("%3.6f ", array[(i*r) +j]);
+//         }
+//         printf("\n");
+//     }
+// }
 
 double **allocateMatrix(int m, int n) {
     double **array = (double **)malloc(m * sizeof(double *));
@@ -123,22 +144,18 @@ double applyMask(double **array, int row, int col){
     // neighbours of given location
     double **neighbours = allocateMatrix(n_size, n_size);
 
-    int range = padded_size - offset;
+    // dynamically get the neighbours
+    int n1 = 0;
+    for (int r=row - 1; r <= row + offset; r++){
+        int n2 = 0;
+        for (int c =col - 1; c <= col + offset; c++){
+            neighbours[n1][n2] = array[r][c];
+            n2++;
+        }
+        n1++;
+    }
 
-    neighbours[0][0] = array[row-1][col-1]; // top_left
-    neighbours[0][1] = array[row-1][col]; // top_middle
-    neighbours[0][2] = array[row-1][col+1]; //top_right
-
-    neighbours[1][0] = array[row][col-1]; //middle_left
-    neighbours[1][1] = array[row][col]; //middle_middle
-    neighbours[1][2] = array[row][col+1]; //middle_right
-
-    neighbours[2][0] = array[row+1][col-1]; //bottom_left
-    neighbours[2][1] = array[row+1][col]; //bottom_middle
-    neighbours[2][2] = array[row+1][col+1]; //bottom_right
-
-    // printArray(neighbours, n_size, n_size);
-
+    // element-wise matrix multiplication
     double **convolution = allocateMatrix(n_size, n_size);
     double value = 0;
 
@@ -167,11 +184,67 @@ double **serial_convolution(double **input, double **output){
     return output;
 }
 
+// __device__ double global_applyMask(double **array, int row, int col){
+//     const int size = 512;
+//     const int mask_size = 3;
+//     const unsigned int offset = mask_size/2;
+//     int n_size = offset * 2 + 1;
+
+//     // neighbours of given location
+//     // double **neighbours = allocateMatrix(n_size, n_size);
+//     double **neighbours ;
+//     malloc((void **) &neighbours, sizeof(double));
+
+//     // dynamically get the neighbours
+//     int n1 = 0;
+//     for (int r=row - 1; r <= row + offset; r++){
+//         int n2 = 0;
+//         for (int c =col - 1; c <= col + offset; c++){
+//             neighbours[n1][n2] = array[r][c];
+//             n2++;
+//         }
+//         n1++;
+//     }
+
+//     // element-wise matrix multiplication
+//     double **convolution = allocateMatrix(n_size, n_size);
+//     double value = 0;
+
+//     for (int r=0; r<3; r++){
+//         for(int c=0; c<3; c++){
+//             // printf("value: %3.6f \n", mask[1][1]);
+//             convolution[r][c] = mask[r][c] * neighbours[r][c];
+//             value = value + convolution[r][c];
+//         }
+//     }
+//     // printf("value: %3.6f \n", value);
+//     // printArray(convolution, offset, offset);
+
+//     return value;
+// }
+
+__global__ void global_convolution(double **input, double **output, int offset){
+    // x = get threads in x direction i.e. columns
+    // y = get threads in y direction i.e. rows
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    // int width = gridDim.x * blockDim.x;
+
+    for (int i = offset; i<blockDim.x; i++){
+        for (int j = offset; j<blockDim.y; j++){
+            // output[i][j] = global_applyMask(input, i, j);
+        }
+    }
+}
+
 int main(int argc, char **argv){
     int devID = findCudaDevice(0, 0);
     cudaGetDeviceProperties(0, 0);
 
+    // const char *imageFilename = "image21.pgm";
     const char *imageFilename = "lena_bw.pgm";
+    // const char *imageFilename = "man.pgm";
+    // const char *imageFilename = "mandrill.pgm";
 
     // load image from disk
     float *hData = NULL;
@@ -189,44 +262,92 @@ int main(int argc, char **argv){
     unsigned int size = width * height * sizeof(float);
     printf("Loaded '%s', %d x %d pixels\n", imageFilename, width, height);
 
+    printArray(hData, 10, 10);
+
     // convert image to 2D
     double **image =  convert2D(hData, width, height);
     // printf("Input image \n");
     // printArray(image, 10, 10);
 
-    // allocate space for padded image
-    double **padded = allocateMatrix(padded_size, padded_size);
-    padded = padArray(image, padded);
+    // allocate space for padded image with zeros
+    double **h_padded = allocateMatrix(padded_size, padded_size);
+    h_padded = padArray(image, h_padded);
     // printf("Padded image \n");
     // printArray(padded, 10, 10);
 
-    // convolution results
-    double **output = allocateMatrix(padded_size, padded_size);
-    output = serial_convolution(padded, output);
-    // printf("Convolution image \n");
-    // printArray(output, 10, 10);
+    //-------------- Serial Convolution --------------//
 
+    cudaEvent_t serial_start, serial_stop;
+    cudaEventCreate(&serial_start);
+    cudaEventCreate(&serial_stop);
+
+    double **h_output = allocateMatrix(padded_size, padded_size);
+    cudaEventRecord(serial_start);
+    h_output = serial_convolution(h_padded, h_output);
+    cudaEventRecord(serial_stop);
+    cudaEventSynchronize(serial_stop);
+
+    float serial_time = 0;
+    cudaEventElapsedTime(&serial_time, serial_start, serial_stop);
+    // printf("Convolution image \n");
+    // printArray(h_output, 10, 10);
+
+     //-------------- CUDA --------------//
+    double **d_input_image;
+    double **d_output_image;
+
+    // allocate memory on device
+    checkCudaErrors(cudaMalloc((void **) &d_input_image, size));
+    checkCudaErrors(cudaMalloc((void **) &d_output_image, size));
+
+    // CUDA timing of event
+    cudaEvent_t global_start, global_stop, shared_start, shared_stop;
+    cudaEventCreate(&global_start);
+    cudaEventCreate(&global_stop);
+    cudaEventCreate(&shared_start);
+    cudaEventCreate(&shared_stop);
+
+    // copy memory from host to device
+    checkCudaErrors(cudaMemcpy(d_input_image, h_padded, size, cudaMemcpyHostToDevice));
+    
+    // dimensions for the kernel
+    dim3 dimBlock (16,16);
+    // dim3 dimgGrid ((width-1)/TILE_WIDTH+1, (height-1)/TILE_WIDTH+1, 1);
+    dim3 dimGrid (512/(dimBlock.x),512/(dimBlock.y),1);
+
+
+    //-------------- Global Convolution --------------//
+    global_convolution<<<dimGrid, dimBlock>>>(d_input_image, d_output_image, offset);
+
+
+
+    //-------------- Unpad and results --------------//
     // unpad the array
     double **unpadded = allocateMatrix(padded_size, padded_size);
-    unpadded = unpad(output, unpadded);
-    printf("unpadded image \n");
-    printArray(unpadded, 10, 10);
+    unpadded = unpad(h_output, unpadded);
+    // printf("unpadded image \n");
+    // printArray(unpadded, 10, 10);
 
     // update array
     float *result_image;
     result_image = convert1D(unpadded, width, height);
 
     // Write result to file
-    char outputFilename[1024];
-    strcpy(outputFilename, imagePath);
-    strcpy(outputFilename + strlen(imagePath) - 4, "_out.pgm");
-    sdkSavePGM(outputFilename, result_image, width, height);
-    printf("Wrote '%s'\n", outputFilename);
+    // char outputFilename[1024];
+    // strcpy(outputFilename, imagePath);
+    // strcpy(outputFilename + strlen(imagePath) - 4, "_out.pgm");
+    // sdkSavePGM(outputFilename, result_image, width, height);
+    // printf("Wrote '%s'\n", outputFilename);
+
+     //-------------- CUDA Performance Metrics --------------//
+
+    //  float serial_throughput = num_ops / (serial_time / 1000.0f) / 1000000000.0f;
+
+     printf("Serial Convolution Time: %3.6f ms \n", serial_time);
 
     free(image);
-    free(padded);
-    free(output);
+    free(h_padded);
+    free(h_output);
     free(unpadded);
     free(result_image);
-
 }

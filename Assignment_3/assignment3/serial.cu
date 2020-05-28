@@ -17,11 +17,11 @@ const int mask_size = 3;
 const int offset = floor(mask_size/2);
 const int padded_size = size + 2*offset;
 
-const double mask[mask_size][mask_size] = {
-    {1, 1, 1},
-    {1, 1, 1},
-    {1, 1, 1},
-};
+// const double mask[mask_size][mask_size] = {
+//     {1, 1, 1},
+//     {1, 1, 1},
+//     {1, 1, 1},
+// };
 
 // gaussian
 // const double mask[mask_size][mask_size] = {
@@ -33,11 +33,11 @@ const double mask[mask_size][mask_size] = {
 // };
 
 // edge detection
-// const double mask[mask_size][mask_size] = {
-//     {-1, 0, 1},
-//     {-2, 0, 2},
-//     {-1, 0, 1},
-// };
+const double mask[mask_size][mask_size] = {
+    {-1, 0, 1},
+    {-2, 0, 2},
+    {-1, 0, 1},
+};
 
 // sharpenning
 // const double mask[mask_size][mask_size] = {
@@ -189,7 +189,10 @@ int main(int argc, char **argv){
     int devID = findCudaDevice(0, 0);
     cudaGetDeviceProperties(0, 0);
 
+    // const char *imageFilename = "image21.pgm";
     const char *imageFilename = "lena_bw.pgm";
+    // const char *imageFilename = "man.pgm";
+    // const char *imageFilename = "mandrill.pgm";
 
     // load image from disk
     float *hData = NULL;
@@ -218,12 +221,24 @@ int main(int argc, char **argv){
     // printf("Padded image \n");
     // printArray(padded, 10, 10);
 
-    // convolution results
+    
+    //-------------- Serial Convolution --------------//
+    cudaEvent_t serial_start, serial_stop;
+    cudaEventCreate(&serial_start);
+    cudaEventCreate(&serial_stop);
+
     double **output = allocateMatrix(padded_size, padded_size);
+    cudaEventRecord(serial_start);
     output = serial_convolution(padded, output);
+    cudaEventRecord(serial_stop);
+    cudaEventSynchronize(serial_stop);
+
+    float serial_time = 0;
+    cudaEventElapsedTime(&serial_time, serial_start, serial_stop);
     // printf("Convolution image \n");
     // printArray(output, 10, 10);
 
+    //-------------- Unpad and results --------------//
     // unpad the array
     double **unpadded = allocateMatrix(padded_size, padded_size);
     unpadded = unpad(output, unpadded);
@@ -240,6 +255,12 @@ int main(int argc, char **argv){
     strcpy(outputFilename + strlen(imagePath) - 4, "_out.pgm");
     sdkSavePGM(outputFilename, result_image, width, height);
     printf("Wrote '%s'\n", outputFilename);
+
+    //-------------- CUDA Performance Metrics --------------//
+
+    //  float serial_throughput = num_ops / (serial_time / 1000.0f) / 1000000000.0f;
+
+    printf("Serial Convolution Time: %3.6f ms \n", serial_time);
 
     free(image);
     free(padded);
