@@ -106,13 +106,13 @@ int main(int argc, char **argv){
   //-------------- Initialise Masks --------------//
   // Allocate the mask and initialize it
   // edge detection
-  // float h_mask[MASK_DIM * MASK_DIM] = {-1, -2, -1, 0, 0, 0, 1, 2, 1};
+  float h_mask[MASK_DIM * MASK_DIM] = {-1, -2, -1, 0, 0, 0, 1, 2, 1};
 
   // shapenning filter
   // float h_mask[MASK_DIM * MASK_DIM] = {-1, -1, -1, -1, 9, -1, -1, -1, -1};
 
   // averaging filter
-  float h_mask[MASK_DIM * MASK_DIM] = {1, 1, 1, 1, 1, 1, 1, 1, 1};
+  // float h_mask[MASK_DIM * MASK_DIM] = {1, 1, 1, 1, 1, 1, 1, 1, 1};
 
 
  //-------------- CUDA --------------//

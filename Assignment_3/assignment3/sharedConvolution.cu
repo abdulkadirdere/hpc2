@@ -172,8 +172,8 @@ __global__ void shared_convolution(float* dData, float* dResult, unsigned int wi
 int main(int argc, char **argv){
 
   // image file names as input
-  // const char *imageFilename = "image21.pgm";
-  const char *imageFilename = "lena_bw.pgm";
+  const char *imageFilename = "image21.pgm";
+  // const char *imageFilename = "lena_bw.pgm";
   // const char *imageFilename = "man.pgm";
   // const char *imageFilename = "mandrill.pgm";
 
@@ -203,27 +203,15 @@ int main(int argc, char **argv){
   float *h_result = (float *)malloc(sizeof(float) * width * height);;
 
   //-------------- Initialise Masks --------------//
+  // Allocate the mask and initialize it
   // edge detection
-  // float h_mask[MASK_DIM][MASK_DIM] = {
-  //   {-1, 0, 1},
-  //   {-2, 0, 2},
-  //   {-1, 0, 1},
-  // };
+  // float h_mask[MASK_DIM * MASK_DIM] = {-1, -2, -1, 0, 0, 0, 1, 2, 1};
 
   // shapenning filter
-  // float h_mask[MASK_DIM][MASK_DIM] = {
-  //   {-1, -1, -1},
-  //   {-1,  9, -1},
-  //   {-1, -1, -1},
-  // };
-  float constant_mem_mask[MASK_DIM * MASK_DIM]= {-1, -1, -1, -1, 9, -1, -1, -1, -1};
+  float h_mask[MASK_DIM * MASK_DIM] = {-1, -1, -1, -1, 9, -1, -1, -1, -1};
 
   // averaging filter
-  // float h_mask[MASK_DIM][MASK_DIM] = {
-  //   {1, 1, 1},
-  //   {1, 1, 1},
-  //   {1, 1, 1},
-  // };
+  // float h_mask[MASK_DIM * MASK_DIM] = {1, 1, 1, 1, 1, 1, 1, 1, 1};
 
   //-------------- CUDA --------------//
   // Allocate device memory
@@ -235,7 +223,7 @@ int main(int argc, char **argv){
   // Copy data to the device
   checkCudaErrors(cudaMemcpy(d_image, hData, image_size, cudaMemcpyHostToDevice));
   // checkCudaErrors(cudaMemcpyToSymbol(d_mask_shared, h_mask, mask_size));
-  checkCudaErrors(cudaMemcpyToSymbol(d_mask_shared, constant_mem_mask, mask_size));
+  checkCudaErrors(cudaMemcpyToSymbol(d_mask_shared, h_mask, mask_size));
 
 
   // CUDA timing of event
