@@ -16,9 +16,16 @@
 #define MASK_DIM 3
 #define OFFSET (MASK_DIM/2)
 
-#define TILE_WIDTH 12
-#define BLOCK_WIDTH (TILE_WIDTH + MASK_DIM -1)
+#define TILE_WIDTH 16
+#define RADIUS 2
+#define BLOCK_WIDTH (TILE_WIDTH+(2*RADIUS))
 
+
+#define DIAMETER (RADIUS*2+1) // filter diameter
+#define SIZE (RADIUS*DIAMETER) // filter size
+
+
+__constant__ float mask[MASK_DIM * MASK_DIM];
 
 // allocate mask in constant memory
 __constant__ float d_mask_global[MASK_DIM * MASK_DIM];
@@ -62,7 +69,7 @@ __global__ void global_convolution(float *d_Data, float *d_result, int width, in
 }
 
 // 2D convolution using shared and constant memory
-__global__ void shared_conv(float *d_data, float *d_result, unsigned int width, unsigned int height) {
+__global__ void shared(float *d_data, float *d_result, unsigned int width, unsigned int height) {
   
   // create tile in shared memrory for the convolution
   __shared__ float shared[TILE_WIDTH + MASK_DIM -1][TILE_WIDTH + MASK_DIM -1];
@@ -116,7 +123,51 @@ __global__ void shared_conv(float *d_data, float *d_result, unsigned int width, 
   }
 }
 
+__global__ void shared_convolution(float* dData, float* dResult, unsigned int width, unsigned int height){
 
+  // create tile in shared memrory for the convolution
+  __shared__ float shared[BLOCK_WIDTH * BLOCK_WIDTH];
+
+    // for simplicity to use threadIdx
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+    int bx = blockIdx.x;
+    int by = blockIdx.y;
+
+    // get row and column index of pixels in the tile
+    int col = bx * TILE_WIDTH + tx - RADIUS;
+    int row = by * TILE_WIDTH + ty - RADIUS;
+
+    // Find the last and first pixel locations within the image
+    col = max(0, col);
+    col = min(col, width-1);
+    row = max(row, 0);
+    row = min(row, height-1);
+
+    // load the tile pixels from the global memory into shared memory
+    // this will help us to reduce global memory access by the factor of 1/TILE_WIDTH
+    // ignore any pixels which are out-of-bounds (i.e. padded area)
+    unsigned int index = row * width + col;
+    unsigned int block_index = ty * blockDim.y + tx;
+    shared[block_index] = dData[index];
+
+    // thread barrier to wait for all the threads to finish loading from
+    // global memory to shared memory
+    __syncthreads();
+  
+    // Elementwise multiplication of pixel and mask values and add all of the values within the mask
+    // range to get output value of one pixel. Verify that we are not working out-of-bounds of the image
+    // We will iterate over rows and columns within the mask dimensions (i.e. all the neighbours)
+    float value = 0;
+    if (((tx >= RADIUS) && (tx < BLOCK_WIDTH-RADIUS)) && ((ty>=RADIUS) && (ty<=BLOCK_WIDTH-RADIUS))){
+      for(int i = 0; i<MASK_DIM; i++){
+          for(int j = 0; j<MASK_DIM; j++){ 
+            value += shared[block_index+(i*blockDim.x)+j] * mask[i*3+j];
+          }
+      }
+      dResult[index] = value;
+  }
+}
 
 int main(int argc, char **argv){
 
@@ -153,11 +204,11 @@ int main(int argc, char **argv){
 
   //-------------- Initialise Masks --------------//
   // edge detection
-  float h_mask[MASK_DIM][MASK_DIM] = {
-    {-1, 0, 1},
-    {-2, 0, 2},
-    {-1, 0, 1},
-  };
+  // float h_mask[MASK_DIM][MASK_DIM] = {
+  //   {-1, 0, 1},
+  //   {-2, 0, 2},
+  //   {-1, 0, 1},
+  // };
 
   // shapenning filter
   // float h_mask[MASK_DIM][MASK_DIM] = {
@@ -165,6 +216,7 @@ int main(int argc, char **argv){
   //   {-1,  9, -1},
   //   {-1, -1, -1},
   // };
+  float constant_mem_mask[MASK_DIM * MASK_DIM]= {-1, -1, -1, -1, 9, -1, -1, -1, -1};
 
   // averaging filter
   // float h_mask[MASK_DIM][MASK_DIM] = {
@@ -182,7 +234,9 @@ int main(int argc, char **argv){
 
   // Copy data to the device
   checkCudaErrors(cudaMemcpy(d_image, hData, image_size, cudaMemcpyHostToDevice));
-  checkCudaErrors(cudaMemcpyToSymbol(d_mask_shared, h_mask, mask_size));
+  // checkCudaErrors(cudaMemcpyToSymbol(d_mask_shared, h_mask, mask_size));
+  checkCudaErrors(cudaMemcpyToSymbol(mask, constant_mem_mask, mask_size));
+
 
   // CUDA timing of event
   cudaEvent_t shared_start, shared_stop;
@@ -193,13 +247,15 @@ int main(int argc, char **argv){
   int BLOCKS = (width-1)/TILE_WIDTH+1;
   // int BLOCKS = (width+TILE_WIDTH-1)/TILE_WIDTH;
   // Dimension for the kernel launch
-  dim3 dimBlock(BLOCK_WIDTH, BLOCK_WIDTH);
+  // dim3 dimBlock(BLOCK_WIDTH, BLOCK_WIDTH);
   dim3 dimGrid(BLOCKS, BLOCKS);
+    // dim3 dimGrid(32, 32);
+    dim3 dimBlock(BLOCK_WIDTH, BLOCK_WIDTH);
 
   //-------------- Shared Convolution --------------//
   // start the shared memory kernel
     cudaEventRecord(shared_start);
-    shared_conv<<<dimGrid, dimBlock>>>(d_image, d_result, width, height);
+    shared_convolution<<<dimGrid, dimBlock>>>(d_image, d_result, width, height);
     cudaEventRecord(shared_stop); 
     cudaEventSynchronize(shared_stop);
         
@@ -232,9 +288,6 @@ int main(int argc, char **argv){
   printf("Shared Memory Time elpased: %3.6f ms \n", shared_elapsedTime);
 
   std::cout << "Throughput of shared memory kernel: " << shared_throughput << " GFLOPS" << std::endl;
-
-
-
 
 
   //-------------- CUDA Free Memory --------------//
