@@ -420,25 +420,25 @@ int main(int argc, char **argv){
   float num_ops= width * height * MASK_DIM * MASK_DIM; // size of the image (width * height) * size of mask (3*3)
 
     float serial_throughput = num_ops / (serial_time / 1000.0f) / 1000000000.0f;
-        float global_throughput = num_ops / (global_elapsedTime / 1000.0f) / 1000000000.0f;
-        float shared_throughput = num_ops / (shared_elapsedTime / 1000.0f) / 1000000000.0f;
+    float global_throughput = num_ops / (global_elapsedTime / 1000.0f) / 1000000000.0f;
+    float shared_throughput = num_ops / (shared_elapsedTime / 1000.0f) / 1000000000.0f;
 
-        std::cout << "Matrix size: " << width << "x" << width << std::endl;
-        std::cout << "Tile size: " << TILE_WIDTH << "x" << TILE_WIDTH << std::endl;
+    std::cout << "Matrix size: " << width << "x" << width << std::endl;
+    std::cout << "Tile size: " << TILE_WIDTH << "x" << TILE_WIDTH << std::endl;
 
-        printf("Serial Matrix Transpose Time: %3.6f ms \n", serial_time);
-        printf("Global Memory Time elpased: %3.6f ms \n", global_elapsedTime);
-        printf( "Shared Memory Time elpased: %3.6f ms \n", shared_elapsedTime );
+    printf("Serial Image Convolution Time: %3.6f ms \n", serial_time);
+    printf("Global Memory Time elpased: %3.6f ms \n", global_elapsedTime);
+    printf( "Shared Memory Time elpased: %3.6f ms \n", shared_elapsedTime );
 
-        std::cout << "\nSpeedup of global memory kernel (CPU/GPU): " << serial_time / global_elapsedTime << " ms" << std::endl;
-        std::cout << "Speedup of shared memory kernel (CPU/GPU): " << serial_time / shared_elapsedTime << " ms" << std::endl;
+    std::cout << "\nSpeedup of global memory kernel (CPU/GPU): " << serial_time / global_elapsedTime << " ms" << std::endl;
+    std::cout << "Speedup of shared memory kernel (CPU/GPU): " << serial_time / shared_elapsedTime << " ms" << std::endl;
       
-        std::cout << "\nThroughput of serial implementation: " << serial_throughput << " GFLOPS" << std::endl;
-        std::cout << "Throughput of global memory kernel: " << global_throughput << " GFLOPS" << std::endl;
-        std::cout << "Throughput of shared memory kernel: " << shared_throughput << " GFLOPS" << std::endl;
-        std::cout << "Performance improvement: global over serial " <<  global_throughput / serial_throughput << "x" << std::endl;
-        std::cout << "Performance improvement: shared over serial " <<  shared_throughput / serial_throughput << "x" << std::endl;
-        std::cout << "Performance improvement: shared over global " <<  shared_throughput / global_throughput << "x" << std::endl;
+    std::cout << "\nThroughput of serial implementation: " << serial_throughput << " GFLOPS" << std::endl;
+    std::cout << "Throughput of global memory kernel: " << global_throughput << " GFLOPS" << std::endl;
+    std::cout << "Throughput of shared memory kernel: " << shared_throughput << " GFLOPS" << std::endl;
+    std::cout << "Performance improvement: global over serial " <<  global_throughput / serial_throughput << "x" << std::endl;
+    std::cout << "Performance improvement: shared over serial " <<  shared_throughput / serial_throughput << "x" << std::endl;
+    std::cout << "Performance improvement: shared over global " <<  shared_throughput / global_throughput << "x" << std::endl;
 
   //-------------- CUDA Free Memory --------------//
   // Free the memory we allocated

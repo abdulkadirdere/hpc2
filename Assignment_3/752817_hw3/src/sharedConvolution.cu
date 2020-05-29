@@ -262,7 +262,7 @@ int main(int argc, char **argv){
   printf("Wrote '%s'\n", outputFilename);
 
   //-------------- CUDA Performance Metrics --------------//
-  float num_ops= width * height; // every element swap once
+  float num_ops= width * height * MASK_DIM * MASK_DIM; // size of the image (width * height) * size of mask (3*3)
 
   float shared_throughput = num_ops / (shared_elapsedTime / 1000.0f) / 1000000000.0f;
   
