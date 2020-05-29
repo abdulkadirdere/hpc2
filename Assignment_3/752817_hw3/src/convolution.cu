@@ -13,7 +13,7 @@
 #include "helper/inc/helper_cuda.h" // helper functions for CUDA error check
 
 // Convolution Mask Dimension
-#define MASK_DIM 3
+#define MASK_DIM 4
 #define OFFSET (MASK_DIM/2)
 
 #define TILE_WIDTH 16
@@ -308,7 +308,8 @@ int main(int argc, char **argv){
   //   {-1,  9, -1},
   //   {-1, -1, -1},
   // };
-  float constant_mem_mask[MASK_DIM * MASK_DIM]= {-1, -1, -1, -1, 9, -1, -1, -1, -1};
+//   float h_mask[MASK_DIM * MASK_DIM]= {-1, -1, -1, -1, 9, -1, -1, -1, -1};
+  float h_mask[MASK_DIM * MASK_DIM] = {1,1,1,1,1,1,1,1,1, 1, 1, 1, 1, 1, 1, 1};
 
   // averaging filter
   // float h_mask[MASK_DIM][MASK_DIM] = {
@@ -344,7 +345,7 @@ int main(int argc, char **argv){
   // Copy data to the device
   checkCudaErrors(cudaMemcpy(d_image, hData, image_size, cudaMemcpyHostToDevice));
   // checkCudaErrors(cudaMemcpyToSymbol(d_mask_shared, h_mask, mask_size));
-  checkCudaErrors(cudaMemcpyToSymbol(d_mask_shared, constant_mem_mask, mask_size));
+  checkCudaErrors(cudaMemcpyToSymbol(d_mask_shared, h_mask, mask_size));
 
 
   // CUDA timing of event
@@ -427,8 +428,8 @@ int main(int argc, char **argv){
     std::cout << "Tile size: " << TILE_WIDTH << "x" << TILE_WIDTH << std::endl;
 
     printf("Serial Image Convolution Time: %3.6f ms \n", serial_time);
-    printf("Global Memory Time elpased: %3.6f ms \n", global_elapsedTime);
-    printf( "Shared Memory Time elpased: %3.6f ms \n", shared_elapsedTime );
+    printf("Global Memory Time elapsed: %3.6f ms \n", global_elapsedTime);
+    printf( "Shared Memory Time elapsed: %3.6f ms \n", shared_elapsedTime );
 
     std::cout << "\nSpeedup of global memory kernel (CPU/GPU): " << serial_time / global_elapsedTime << " ms" << std::endl;
     std::cout << "Speedup of shared memory kernel (CPU/GPU): " << serial_time / shared_elapsedTime << " ms" << std::endl;
