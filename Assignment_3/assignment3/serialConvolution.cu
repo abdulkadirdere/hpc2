@@ -24,20 +24,20 @@ const int padded_size = size + 2*offset;
 // };
 
 // gaussian
-const double mask[mask_size][mask_size] = {
-    {0,   0, -1,  0, 0},
-    {0,  -1, -2, -1, 0},
-    {-1, -2,  4, -2, -1},
-    {0,  -1, -2, -1, 0},
-    {0,   0, -1,  0, 0},
-};
+// const double mask[mask_size][mask_size] = {
+//     {0,   0, -1,  0, 0},
+//     {0,  -1, -2, -1, 0},
+//     {-1, -2,  4, -2, -1},
+//     {0,  -1, -2, -1, 0},
+//     {0,   0, -1,  0, 0},
+// };
 
 // edge detection
-// const double mask[mask_size][mask_size] = {
-//     {-1, 0, 1},
-//     {-2, 0, 2},
-//     {-1, 0, 1},
-// };
+const double mask[mask_size][mask_size] = {
+    {-1, 0, 1},
+    {-2, 0, 2},
+    {-1, 0, 1},
+};
 
 // sharpenning
 // const double mask[mask_size][mask_size] = {
@@ -191,8 +191,8 @@ int main(int argc, char **argv){
     cudaGetDeviceProperties(0, 0);
 
     // image file names as input
-    // const char *imageFilename = "image21.pgm";
-    const char *imageFilename = "lena_bw.pgm";
+    const char *imageFilename = "image21.pgm";
+    // const char *imageFilename = "lena_bw.pgm";
     // const char *imageFilename = "man.pgm";
     // const char *imageFilename = "mandrill.pgm";
 

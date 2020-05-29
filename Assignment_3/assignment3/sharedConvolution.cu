@@ -25,11 +25,11 @@
 #define SIZE (RADIUS*DIAMETER) // filter size
 
 
-__constant__ float mask[MASK_DIM * MASK_DIM];
+
 
 // allocate mask in constant memory
 __constant__ float d_mask_global[MASK_DIM * MASK_DIM];
-__constant__ float d_mask_shared[MASK_DIM][MASK_DIM];
+__constant__ float d_mask_shared[MASK_DIM * MASK_DIM];
 
 // print 1D array function
 void printArray(float *array, int width) {
@@ -68,60 +68,60 @@ __global__ void global_convolution(float *d_Data, float *d_result, int width, in
   d_result[row * width + col] = value;
 }
 
-// 2D convolution using shared and constant memory
-__global__ void shared(float *d_data, float *d_result, unsigned int width, unsigned int height) {
+// // 2D convolution using shared and constant memory
+// __global__ void shared(float *d_data, float *d_result, unsigned int width, unsigned int height) {
   
-  // create tile in shared memrory for the convolution
-  __shared__ float shared[TILE_WIDTH + MASK_DIM -1][TILE_WIDTH + MASK_DIM -1];
+//   // create tile in shared memrory for the convolution
+//   __shared__ float shared[TILE_WIDTH + MASK_DIM -1][TILE_WIDTH + MASK_DIM -1];
   
-  // for simplicity to use threadIdx
-  int tx = threadIdx.x;
-  int ty = threadIdx.y;
-  int bx = blockIdx.x;
-  int by = blockIdx.y;
+//   // for simplicity to use threadIdx
+//   int tx = threadIdx.x;
+//   int ty = threadIdx.y;
+//   int bx = blockIdx.x;
+//   int by = blockIdx.y;
 
-  // get row and column index of pixels in the tile
-  int row = by * TILE_WIDTH + ty;
-  int col = bx * TILE_WIDTH + tx;
+//   // get row and column index of pixels in the tile
+//   int row = by * TILE_WIDTH + ty;
+//   int col = bx * TILE_WIDTH + tx;
   
-  // row and column index to stat from so we can ignore the padded area.
-  int row_i = row - OFFSET;
-  int col_i = col - OFFSET;
+//   // row and column index to stat from so we can ignore the padded area.
+//   int row_i = row - OFFSET;
+//   int col_i = col - OFFSET;
 
-  // __syncthreads();
-  // load the tile pixels from the global memory into shared memory
-  // this will help us to reduce global memory access by the factor of 1/TILE_WIDTH
-  // ignore any pixels which are out-of-bounds (i.e. padded area)
-  if ((row_i>=0) && (row_i < height) && (col_i >=0) && (col_i < width)){
-    shared[ty][tx] = d_data[row_i*width+col_i];
-  } else {
-    shared[ty][tx]=0;
-  }
+//   // __syncthreads();
+//   // load the tile pixels from the global memory into shared memory
+//   // this will help us to reduce global memory access by the factor of 1/TILE_WIDTH
+//   // ignore any pixels which are out-of-bounds (i.e. padded area)
+//   if ((row_i>=0) && (row_i < height) && (col_i >=0) && (col_i < width)){
+//     shared[ty][tx] = d_data[row_i*width+col_i];
+//   } else {
+//     shared[ty][tx]=0;
+//   }
 
-  // thread barrier to wait for all the threads to finish loading from
-  // global memory to shared memory
-  __syncthreads();
+//   // thread barrier to wait for all the threads to finish loading from
+//   // global memory to shared memory
+//   __syncthreads();
 
-  float output =0;
-  // only certain threads calculate the result
-  // Elementwise multiplication of pixel and mask values and add all of the neighbours
-  // to get output of one pixel (origin pixel)
-  if (ty < TILE_WIDTH &&  tx < TILE_WIDTH){
-    for (int i=0; i< MASK_DIM; i++){
-      for (int j=0; j<MASK_DIM; j++){
-        output += d_mask_shared[i][j] * shared[i+ty][j+tx];
-      }
-    }
-  }
+//   float output =0;
+//   // only certain threads calculate the result
+//   // Elementwise multiplication of pixel and mask values and add all of the neighbours
+//   // to get output of one pixel (origin pixel)
+//   if (ty < TILE_WIDTH &&  tx < TILE_WIDTH){
+//     for (int i=0; i< MASK_DIM; i++){
+//       for (int j=0; j<MASK_DIM; j++){
+//         output += d_mask_shared[i][j] * shared[i+ty][j+tx];
+//       }
+//     }
+//   }
 
-  // thread barrier to wait for all threads to finish convolution
-  __syncthreads();
+//   // thread barrier to wait for all threads to finish convolution
+//   __syncthreads();
 
-  // write output to the results image
-  if (row < height && col < width){
-    d_result[row * width + col] = output;
-  }
-}
+//   // write output to the results image
+//   if (row < height && col < width){
+//     d_result[row * width + col] = output;
+//   }
+// }
 
 __global__ void shared_convolution(float* dData, float* dResult, unsigned int width, unsigned int height){
 
@@ -162,7 +162,7 @@ __global__ void shared_convolution(float* dData, float* dResult, unsigned int wi
     if (((tx >= RADIUS) && (tx < BLOCK_WIDTH-RADIUS)) && ((ty>=RADIUS) && (ty<=BLOCK_WIDTH-RADIUS))){
       for(int i = 0; i<MASK_DIM; i++){
           for(int j = 0; j<MASK_DIM; j++){ 
-            value += shared[block_index+(i*blockDim.x)+j] * mask[i*3+j];
+            value += shared[block_index+(i*blockDim.x)+j] * d_mask_shared[i*3+j];
           }
       }
       dResult[index] = value;
@@ -235,7 +235,7 @@ int main(int argc, char **argv){
   // Copy data to the device
   checkCudaErrors(cudaMemcpy(d_image, hData, image_size, cudaMemcpyHostToDevice));
   // checkCudaErrors(cudaMemcpyToSymbol(d_mask_shared, h_mask, mask_size));
-  checkCudaErrors(cudaMemcpyToSymbol(mask, constant_mem_mask, mask_size));
+  checkCudaErrors(cudaMemcpyToSymbol(d_mask_shared, constant_mem_mask, mask_size));
 
 
   // CUDA timing of event
