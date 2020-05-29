@@ -1,6 +1,3 @@
-#include <cassert>
-#include <cstdlib>
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <vector>
@@ -20,7 +17,6 @@
 #define OFFSET (MASK_DIM/2)
 
 #define TILE_WIDTH 12
-// TILE_WIDTH + MASK_DIM -1
 #define BLOCK_WIDTH (TILE_WIDTH + MASK_DIM -1)
 
 
@@ -38,29 +34,26 @@ void printArray(float *array, int width) {
     }
 }
 
-
+// 2D convolution using global and constant memory
 __global__ void global_convolution(float *d_Data, float *d_result, int width, int height) {
-  // Calculate the global thread positions
+  // calculate the row and column index to compute for each thread
   int row = blockIdx.y * blockDim.y + threadIdx.y;
   int col = blockIdx.x * blockDim.x + threadIdx.x;
 
-  // Starting index for calculation
-  int start_row = row - OFFSET;
-  int start_col = col - OFFSET;
+  // Starting index for convolution so we can ignore the padded area
+  int i_row = row - OFFSET;
+  int i_col = col - OFFSET;
 
   // convolution value to be calculated for each pixel's row and column
-   double value = 0;
-  // Iterate over all the rows
+  double value = 0;
+  // iterate over all rows and column using the mask dimension.
+  // this will calulate all the neighbours and origin pixel and sum these values to give
+  // us the value of the origin pixel
   for (int i = 0; i < MASK_DIM; i++) {
-    // Go over each column
     for (int j = 0; j < MASK_DIM; j++) {
-      // Range check for rowsint
-      if ((start_row + i) >= 0 && (start_row + i) < height) {
-        // Range check for columns
-        if ((start_col + j) >= 0 && (start_col + j) < width) {
+      if ((i_row + i) >= 0 && (i_row + i) < height && (i_col + j) >= 0 && (i_col + j) < width) {
         //   printf("martix %d x %d value: %3.6 --- Mask value: %3.6f \n",i,j, matrix[(start_row + i) * N + (start_col + j)], d_mask[i * MASK_DIM + j]);
-            value += d_Data[(start_row + i) * width + (start_col + j)] * d_mask[i * MASK_DIM + j];
-        }
+        value += d_Data[(i_row + i) * width + (i_col + j)] * d_mask_global[i * MASK_DIM + j];
       }
     }
   }
@@ -68,30 +61,44 @@ __global__ void global_convolution(float *d_Data, float *d_result, int width, in
   d_result[row * width + col] = value;
 }
 
-
+// 2D convolution using shared and constant memory
 __global__ void shared_conv(float *d_data, float *d_result, unsigned int width, unsigned int height) {
-
-  __shared__ float shared[TILE_WIDTH + MASK_DIM -1][TILE_WIDTH + MASK_DIM -1];;
+  
+  // create tile in shared memrory for the convolution
+  __shared__ float shared[TILE_WIDTH + MASK_DIM -1][TILE_WIDTH + MASK_DIM -1];
+  
+  // for simplicity to use threadIdx
   int tx = threadIdx.x;
   int ty = threadIdx.y;
+  int bx = blockIdx.x;
+  int by = blockIdx.y;
 
-  int row = blockIdx.y * TILE_WIDTH + ty;
-  int col = blockIdx.x * TILE_WIDTH + tx;
+  // get row and column index of pixels in the tile
+  int row = by * TILE_WIDTH + ty;
+  int col = bx * TILE_WIDTH + tx;
   
+  // row and column index to stat from so we can ignore the padded area.
   int row_i = row - OFFSET;
   int col_i = col - OFFSET;
 
   // __syncthreads();
-
-  float output =0;
+  // load the tile pixels from the global memory into shared memory
+  // this will help us to reduce global memory access by the factor of 1/TILE_WIDTH
+  // ignore any pixels which are out-of-bounds (i.e. padded area)
   if ((row_i>=0) && (row_i < height) && (col_i >=0) && (col_i < width)){
     shared[ty][tx] = d_data[row_i*width+col_i];
   } else {
     shared[ty][tx]=0;
   }
 
+  // thread barrier to wait for all the threads to finish loading from
+  // global memory to shared memory
   __syncthreads();
 
+  float output =0;
+  // only certain threads calculate the result
+  // Elementwise multiplication of pixel and mask values and add all of the neighbours
+  // to get output of one pixel (origin pixel)
   if (ty < TILE_WIDTH &&  tx < TILE_WIDTH){
     for (int i=0; i< MASK_DIM; i++){
       for (int j=0; j<MASK_DIM; j++){
@@ -100,8 +107,11 @@ __global__ void shared_conv(float *d_data, float *d_result, unsigned int width, 
     }
   }
 
+  // thread barrier to wait for all threads to finish convolution
+  __syncthreads();
+
+  // write output to the results image
   if (row < height && col < width){
-    // printf("test output\n");
     d_result[row * width + col] = output;
   }
 }
@@ -110,6 +120,7 @@ __global__ void shared_conv(float *d_data, float *d_result, unsigned int width, 
 
 int main(int argc, char **argv){
 
+  // image file names as input
   // const char *imageFilename = "image21.pgm";
   const char *imageFilename = "lena_bw.pgm";
   // const char *imageFilename = "man.pgm";
@@ -128,15 +139,13 @@ int main(int argc, char **argv){
 
   sdkLoadPGM(imagePath, &hData, &width, &height);
 
-  unsigned int size = width * height * sizeof(float);
+  unsigned int image_size = width * height * sizeof(float);
   printf("Loaded '%s', %d x %d pixels\n", imageFilename, width, height);
 
   // printf("Input image \n");
   // printArray(hData, 10);
 
-  // Size of the matrix (in bytes)
-  size_t image_size = width * height * sizeof(float);
-  // size of mask for memory allocation
+  // allocate memory for mask
   size_t mask_size = MASK_DIM * MASK_DIM * sizeof(float);
 
   // Allocate memory for h_result image
@@ -149,6 +158,20 @@ int main(int argc, char **argv){
     {-2, 0, 2},
     {-1, 0, 1},
   };
+
+  // shapenning filter
+  // float h_mask[MASK_DIM][MASK_DIM] = {
+  //   {-1, -1, -1},
+  //   {-1,  9, -1},
+  //   {-1, -1, -1},
+  // };
+
+  // averaging filter
+  // float h_mask[MASK_DIM][MASK_DIM] = {
+  //   {1, 1, 1},
+  //   {1, 1, 1},
+  //   {1, 1, 1},
+  // };
 
   //-------------- CUDA --------------//
   // Allocate device memory
@@ -168,6 +191,7 @@ int main(int argc, char **argv){
 
   // Calculate grid dimensions for dimGrid
   int BLOCKS = (width-1)/TILE_WIDTH+1;
+  // int BLOCKS = (width+TILE_WIDTH-1)/TILE_WIDTH;
   // Dimension for the kernel launch
   dim3 dimBlock(BLOCK_WIDTH, BLOCK_WIDTH);
   dim3 dimGrid(BLOCKS, BLOCKS);
@@ -185,21 +209,35 @@ int main(int argc, char **argv){
     cudaEventDestroy(shared_start);
     cudaEventDestroy(shared_stop);
 
-  // Copy the h_result back to the CPU
-  checkCudaErrors(cudaMemcpy(h_result, d_result, image_size, cudaMemcpyDeviceToHost));
-  //   printf("Result image \n");
-  //   printArray(h_result, 10);
+    // Copy the h_result back to the CPU
+    checkCudaErrors(cudaMemcpy(h_result, d_result, image_size, cudaMemcpyDeviceToHost));
+    //   printf("Result image \n");
+    //   printArray(h_result, 10);
 
   //-------------- Write Convolution Results to output image --------------//
   char outputFilename[1024];
   strcpy(outputFilename, imagePath);
-  strcpy(outputFilename + strlen(imagePath) - 4, "_out.pgm");
+  strcpy(outputFilename + strlen(imagePath) - 4, "_shared.pgm");
   sdkSavePGM(outputFilename, h_result, width, height);
   printf("Wrote '%s'\n", outputFilename);
 
   //-------------- CUDA Performance Metrics --------------//
+  float num_ops= width * height; // every element swap once
+
+  float shared_throughput = num_ops / (shared_elapsedTime / 1000.0f) / 1000000000.0f;
+  
+  std::cout << "Matrix size: " << width << "x" << height << std::endl;
+  std::cout << "Tile size: " << TILE_WIDTH << "x" << TILE_WIDTH << std::endl;
+
   printf("Shared Memory Time elpased: %3.6f ms \n", shared_elapsedTime);
 
+  std::cout << "Throughput of shared memory kernel: " << shared_throughput << " GFLOPS" << std::endl;
+
+
+
+
+
+  //-------------- CUDA Free Memory --------------//
   // Free the memory we allocated
   free(imagePath);
   free(h_result);

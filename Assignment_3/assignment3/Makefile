@@ -2,21 +2,24 @@ INC="./inc"
 FLAGS=-I$(INC)
 CC=nvcc
 
-all: matrixTranspose vectorReduction matrixMultiplication run clean
+all: serialConvolution globalConvolution sharedConvolution run clean
 
-matrixTranspose: matrixTranspose.cu
-	$(CC) matrixTranspose.cu -o matrixTranspose.out
+serialConvolution: serialConvolution.cu
+	$(CC) serialConvolution.cu -o serialConvolution.out
 
-vectorReduction: vectorReduction.cu
-	$(CC) vectorReduction.cu -o vectorReduction.out
+globalConvolution: globalConvolution.cu
+	$(CC) globalConvolution.cu -o globalConvolution.out
 
-matrixMultiplication: matrixMultiplication.cu
-	$(CC) matrixMultiplication.cu -o matrixMultiplication.out
+sharedConvolution: sharedConvolution.cu
+	$(CC) sharedConvolution.cu -o sharedConvolution.out
 
 run:
-	srun -N1 ./matrixTranspose.out
-	srun -N1 ./vectorReduction.out
-	srun -N1 ./matrixMultiplication.out
+	# srun -N1 ./serialConvolution.out
+	# srun -N1 ./globalConvolution.out
+	# srun -N1 ./sharedConvolution.out
+	./serialConvolution.out
+	./globalConvolution.out
+	./sharedConvolution.out
 
 clean:
-	rm matrixTranspose.out vectorReduction.out matrixMultiplication.out
+	rm serialConvolution.out globalConvolution.out sharedConvolution.out
