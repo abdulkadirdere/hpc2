@@ -119,7 +119,7 @@ __global__ void global_convolution(float *d_Data, float *d_result, int width, in
 //   }
 // }
 
-__global__ void shared_convolution(float* dData, float* dResult, unsigned int width, unsigned int height){
+__global__ void shared_convolution(float* d_data, float* d_result, unsigned int width, unsigned int height){
 
   // create tile in shared memrory for the convolution
   __shared__ float shared[BLOCK_WIDTH * BLOCK_WIDTH];
@@ -145,7 +145,7 @@ __global__ void shared_convolution(float* dData, float* dResult, unsigned int wi
     // ignore any pixels which are out-of-bounds (i.e. padded area)
     unsigned int index = row * width + col;
     unsigned int block_index = ty * blockDim.y + tx;
-    shared[block_index] = dData[index];
+    shared[block_index] = d_data[index];
 
     // thread barrier to wait for all the threads to finish loading from
     // global memory to shared memory
@@ -161,7 +161,7 @@ __global__ void shared_convolution(float* dData, float* dResult, unsigned int wi
             value += shared[block_index+(i*blockDim.x)+j] * d_mask_shared[i*3+j];
           }
       }
-      dResult[index] = value;
+      d_result[index] = value;
   }
 }
 
@@ -262,7 +262,7 @@ int main(int argc, char **argv){
   printf("Wrote '%s'\n", outputFilename);
 
   //-------------- CUDA Performance Metrics --------------//
-  float num_ops= width * height * MASK_DIM * MASK_DIM; // size of the image (width * height) * size of mask (3*3)
+  float num_ops = width * height * MASK_DIM * MASK_DIM; // size of the image (width * height) * size of mask (3*3)
 
   float shared_throughput = num_ops / (shared_elapsedTime / 1000.0f) / 1000000000.0f;
   
