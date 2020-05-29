@@ -40,6 +40,34 @@
 In this report, we will focus on the different design methodologies used to create 2D convolution on provided images. We will look at serial implementation, CUDA implementation using both global memory and constant memory, CUDA implementation using both shared memory and constant memory and CUDA implementation using texture memory. Each design methodology is defined and process has been explained with the code.
 
 \section{Methodology}
+We will be using averaging, edge detection and sharpening masks for the convolution process.
+
+\begin{table}[]
+\centering
+\begin{tabular}{|l|l|l|}
+\hline
+-1 & -1 & -1 \\ \hline
+-1 & 9  & -1 \\ \hline
+-1 & -1 & -1 \\ \hline
+\end{tabular}
+\hspace{0.5cm}
+\begin{tabular}{|l|l|l|}
+\hline
+-1 & 0 & 1 \\ \hline
+-2 & 0  & 2 \\ \hline
+-1 & 0 & 1 \\ \hline
+\end{tabular}
+\hspace{0.5cm}
+\begin{tabular}{|l|l|l|}
+\hline
+1 & 1 & 1 \\ \hline
+1 & 1  & 1 \\ \hline
+1 & 1 & 1 \\ \hline
+\end{tabular}
+\caption{Masks used for convolution: sharpening, edge detection and averaging respectively}
+\label{tab:my-table}
+\end{table}
+
 \subsection{Serial Computation}
 We will first implement the serial version of 2D image convolution algorithm using the CPU. Serial version of the algorithm will follow the following design methodology:
 \begin{itemize}[leftmargin=0em]
@@ -151,16 +179,68 @@ __global__ void global_convolution(float *d_Data, float *d_result, int width, in
 In this section, we will look at image convolution using both shared memory and constant memory.
 
 \begin{lstlisting}[language=C, label={lst: mask_shared}, caption= Cache mask in to the constant memory]
+// Convolution Mask Dimension
+#define MASK_DIM 3
+#define OFFSET (MASK_DIM/2)
 
+#define TILE_WIDTH 16
+#define RADIUS 2
+#define BLOCK_WIDTH (TILE_WIDTH+(2*RADIUS))
+
+#define DIAMETER (RADIUS*2+1) // mask diameter
+#define SIZE (RADIUS*DIAMETER) // mask size
+
+// allocate mask in constant memory
+__constant__ float d_mask_shared[MASK_DIM * MASK_DIM];
 \end{lstlisting}
 
 
 \begin{lstlisting}[language=C, label={lst: shared_convolution}, caption= 2D Convolution using the shared memory]
+__global__ void shared_convolution(float* dData, float* dResult, unsigned int width, unsigned int height){
 
-\end{lstlisting}
+  // create tile in shared memrory for the convolution
+  __shared__ float shared[BLOCK_WIDTH * BLOCK_WIDTH];
 
+    // for simplicity to use threadIdx
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+    int bx = blockIdx.x;
+    int by = blockIdx.y;
 
-\subsection{CUDA implementation using texture memory}
+    // get row and column index of pixels in the tile
+    int col = bx * TILE_WIDTH + tx - RADIUS;
+    int row = by * TILE_WIDTH + ty - RADIUS;
+
+    // Find the last and first pixel locations within the image
+    col = max(0, col);
+    col = min(col, width-1);
+    row = max(row, 0);
+    row = min(row, height-1);
+
+    // load the tile pixels from the global memory into shared memory
+    // this will help us to reduce global memory access by the factor of 1/TILE_WIDTH
+    // ignore any pixels which are out-of-bounds (i.e. padded area)
+    unsigned int index = row * width + col;
+    unsigned int block_index = ty * blockDim.y + tx;
+    shared[block_index] = dData[index];
+
+    // thread barrier to wait for all the threads to finish loading from
+    // global memory to shared memory
+    __syncthreads();
+  
+    // Elementwise multiplication of pixel and mask values and add all of the values within the mask
+    // range to get output value of one pixel. Verify that we are not working out-of-bounds of the image
+    // We will iterate over rows and columns within the mask dimensions (i.e. all the neighbours)
+    float value = 0;
+    if (((tx >= RADIUS) && (tx < BLOCK_WIDTH-RADIUS)) && ((ty>=RADIUS) && (ty<=BLOCK_WIDTH-RADIUS))){
+      for(int i = 0; i<MASK_DIM; i++){
+          for(int j = 0; j<MASK_DIM; j++){ 
+            value += shared[block_index+(i*blockDim.x)+j] * d_mask_shared[i*3+j];
+          }
+      }
+      dResult[index] = value;
+  }
+}\end{lstlisting}
 
 
 \section{Questions and Answers}
@@ -169,16 +249,81 @@ In this section, we will look at image convolution using both shared memory and 
 
 \section{Experiment} 
 \subsection{Experiment Setup}
-Experiments are conducted on MacBook Pro (15-inch, 2019) by Apple laptop. Processing power of the laptop is 2.6 GHz 6-Core Intel Core i7. Memory specifications of the MacBook is 16 GB 2400 MHz DDR4. Operating system of the MacBook is macOS Catalina. Experiments conducted using different combination of distance and sorting algorithms with varying sizes for the $m$ reference, $q$ query and $d$ dimensional points. These varying sizes are recorded and kept constant to not affect the results.
+Experiments are conducted on a cluster. The details for the CUDA device are listed.\\
+CUDA Device 0\\
+Major revision number:         6\\
+Minor revision number:         1\\
+Name:                          GeForce GTX 1060 6GB \\ 
+Total global memory:           6371475456 \\
+Total shared memory per block: 49152 \\
+Total registers per block:     65536 \\
+Warp size:                     32 \\ 
+Maximum memory pitch:          2147483647 \\
+Maximum threads per block:     1024 \\
+Maximum dimension 0 of block:  1024 \\
+Maximum dimension 1 of block:  1024 \\
+Maximum dimension 2 of block:  64 \\
+Maximum dimension 0 of grid:   2147483647 \\
+Maximum dimension 1 of grid:   65535 \\
+Maximum dimension 2 of grid:   65535 \\
+Clock rate:                    1784500 \\
+Total constant memory:         65536 \\
+Texture alignment:             512 \\
+Concurrent copy and execution: Yes \\
+Number of multiprocessors:     10 \\
+Kernel execution timeout:      Yes \\
 
-\subsection{Experiment Data}
-Experiments are done using synthetic data. Synthetic data is generated by using a random number generator algorithm for the reference and query matrices. Following sizes have been used for the variables $m$, $n$ and $d$ in different experiments as shown in results. We have used 100000 for $m$ references and 10 for $d$ dimensions. We have altered $q$ query points between 100 and 200.
 \subsection{Experiment Results}
 Experimental results are shown with different distance and sorting algorithms and with varying $n$ query points.
 
+\begin{table}[]
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Image}                                                                                           & \textbf{image21.pgm} & \textbf{lena\_bw.pgm} \\ \hline
+\textbf{Matrix Size}                                                                                     & 512x512              & 512x512               \\ \hline
+\textbf{Tile Size}                                                                                       & 16x16                & 16x16                 \\ \hline
+\textbf{\begin{tabular}[c]{@{}l@{}}Serial Convolution\\ Time (ms)\end{tabular}}                          & 154.862244           & 152.380386            \\ \hline
+\textbf{\begin{tabular}[c]{@{}l@{}}Global Memory\\ Time (ms)\end{tabular}}                               & 0.093184             & 0.094880              \\ \hline
+\textbf{\begin{tabular}[c]{@{}l@{}}Shared Memory \\ Time (ms)\end{tabular}}                              & 0.030656             & 0.032704              \\ \hline
+\textbf{\begin{tabular}[c]{@{}l@{}}Speedup of global memory\\ kernel (ms)\end{tabular}}                  & 1661.9               & 1606.03               \\ \hline
+\textbf{\begin{tabular}[c]{@{}l@{}}Speedup of shared memory\\ kernel (ms)\end{tabular}}                  & 5051.61              & 4659.38               \\ \hline
+\textbf{\begin{tabular}[c]{@{}l@{}}Throughput of serial\\ implementation (GFLOPS)\end{tabular}}          & 0.0152348            & 0.0154829             \\ \hline
+\textbf{\begin{tabular}[c]{@{}l@{}}Throughput of global\\ memory implementation\\ (GFLOPS)\end{tabular}} & 25.3187              & 24.8661               \\ \hline
+\textbf{\begin{tabular}[c]{@{}l@{}}Throughput of shared\\ memory implementation\\ (GFLOPS)\end{tabular}} & 76.9603              & 72.1409               \\ \hline
+\textbf{\begin{tabular}[c]{@{}l@{}}Performance improvement: \\ global over serial\end{tabular}}          & 1661.9x              & 1606.03x              \\ \hline
+\textbf{\begin{tabular}[c]{@{}l@{}}Performance improvement: \\ shared over serial\end{tabular}}          & 5051.61x             & 4659.38x              \\ \hline
+\textbf{\begin{tabular}[c]{@{}l@{}}Performance improvement: \\ shared over global\end{tabular}}          & 3.03967x             & 2.90117x              \\ \hline
+\end{tabular}
+\caption{Results of the convolutions applied to the given images.}
+\label{tab:results-table}
+\end{table}
+
+
+
+\begin{figure}[H]
+\centering
+\subfloat[]{\includegraphics[width=.2\textwidth]{image21.png}} \hfill
+\subfloat[]{\includegraphics[width=.2\textwidth]{image21_sharpening.png}} \hfill
+\subfloat[]{\includegraphics[width=.2\textwidth]{image21_edge.png}} \hfill
+\subfloat[]{\includegraphics[width=.2\textwidth]{image21_averaging.png}} \hfill
+\caption{Convolution results for the $image21$ image (a) Original Image (b) Sharpening (c) Edge detection (d) Averaging}
+\label{fig:image21}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\subfloat[]{\includegraphics[width=.2\textwidth]{lena_bw.png}} \hfill
+\subfloat[]{\includegraphics[width=.2\textwidth]{lena_bw_global_sharpening.png}} \hfill
+\subfloat[]{\includegraphics[width=.2\textwidth]{lena_bw_shared_edge.png}} \hfill
+\subfloat[]{\includegraphics[width=.2\textwidth]{lena_bw_averaging.png}} \hfill
+\caption{Convolution results for the $lena\_bw$ image (a) Original Image (b) Sharpening (c) Edge detection (d) Averaging}
+\label{fig:lena}
+\end{figure}
+
 
 \subsection{Summary of Results}
-
+As we can see from the Table~\ref{tab:results-table} that global memory version has greatly improved on the serial implementation. The shared memory version has improved on global memory and serial implementations. However, global memory implementation is still not at its top efficiency since every thread calculates its own output. This can be increased by implementing threads to compute a tile of the image similar to shared memory implementation. 
 
 \section{Conclusion} 
 
