@@ -39,8 +39,8 @@ __global__ void global_convolution(float *d_Data, float *d_result, int width, in
   int col = blockIdx.x * blockDim.x + threadIdx.x;
 
   // Starting index for calculation
-  int start_row = row - OFFSET;
-  int start_col = col - OFFSET;
+  int i_row = row - OFFSET;
+  int i_col = col - OFFSET;
 
   // convolution value to be calculated for each pixel's row and column
    double value = 0;
@@ -49,24 +49,18 @@ __global__ void global_convolution(float *d_Data, float *d_result, int width, in
     // Go over each column
     for (int j = 0; j < MASK_DIM; j++) {
       // Range check for rowsint
-      if ((start_row + i) >= 0 && (start_row + i) < height) {
+      if ((i_row + i) >= 0 && (i_row + i) < height && (i_col + j) >= 0 && (i_col + j) < width) {
         // Range check for columns
-        if ((start_col + j) >= 0 && (start_col + j) < width) {
+        // if ((start_col + j) >= 0 && (start_col + j) < width) {
         //   printf("martix %d x %d value: %3.6 --- Mask value: %3.6f \n",i,j, matrix[(start_row + i) * N + (start_col + j)], d_mask[i * MASK_DIM + j]);
-            value += d_Data[(start_row + i) * width + (start_col + j)] * d_mask[i * MASK_DIM + j];
-        }
+            value += d_Data[(i_row + i) * width + (i_col + j)] * d_mask[i * MASK_DIM + j];
+        // }
       }
     }
   }
   // write back convolution result
   d_result[row * width + col] = value;
 }
-
-
-
-
-
-
 
 
 // Initializes an n x n matrix with random numbers
@@ -169,17 +163,24 @@ int main(int argc, char **argv){
   float h_mask[9] = {-1, -2, -1, 0, 0, 0, 1, 2, 1};
 //   printArray(h_mask, 7);
 
+ //-------------- CUDA --------------//
   // Allocate device memory
   float *d_image;
   float *d_result;
   checkCudaErrors(cudaMalloc((void**)&d_image, sizeof(float) * image_size));
   checkCudaErrors(cudaMalloc((void**)&d_result, sizeof(float) * image_size));
-//   cudaMalloc(&d_image, image_size);
-//   cudaMalloc(&d_result, image_size);
 
   // Copy data to the device
   checkCudaErrors(cudaMemcpy(d_image, hData, image_size, cudaMemcpyHostToDevice));
   checkCudaErrors(cudaMemcpyToSymbol(d_mask, h_mask, mask_size));
+
+  // CUDA timing of event
+  cudaEvent_t global_start, global_stop, shared_start, shared_stop;
+  cudaEventCreate(&global_start);
+  cudaEventCreate(&global_stop);
+  cudaEventCreate(&shared_start);
+  cudaEventCreate(&shared_stop);
+
 
   // Calculate grid dimensions
   int THREADS = 16;
@@ -189,8 +190,17 @@ int main(int argc, char **argv){
   dim3 block_dim(THREADS, THREADS);
   dim3 grid_dim(BLOCKS, BLOCKS);
 
-  // Perform 2D Convolution
+  //-------------- Global Convolution --------------//
+  // start the global memory kernel
+  cudaEventRecord(global_start);
   global_convolution<<<grid_dim, block_dim>>>(d_image, d_result, width, height);
+  cudaEventRecord(global_stop);
+  cudaEventSynchronize(global_stop);
+
+  float global_elapsedTime = 0;
+  cudaEventElapsedTime(&global_elapsedTime, global_start, global_stop);
+  cudaEventDestroy(global_start);
+  cudaEventDestroy(global_stop);
 
   // Copy the h_result back to the CPU
   checkCudaErrors(cudaMemcpy(h_result, d_result, image_size, cudaMemcpyDeviceToHost));
@@ -205,14 +215,15 @@ int main(int argc, char **argv){
     sdkSavePGM(outputFilename, h_result, width, height);
     printf("Wrote '%s'\n", outputFilename);
 
-  std::cout << "COMPLETED SUCCESSFULLY! \n";
+  //-------------- CUDA Performance Metrics --------------//
+  printf("Global Memory Time elpased: %3.6f ms \n", global_elapsedTime);
 
   // Free the memory we allocated
   free(imagePath);
   free(h_result);
 
-  checkCudaErrors(cudaFree(h_mask));
-  checkCudaErrors(cudaFree(d_mask));
+//   checkCudaErrors(cudaFree(h_mask));
+//   checkCudaErrors(cudaFree(d_mask));
   checkCudaErrors(cudaFree(d_image));
   checkCudaErrors(cudaFree(d_result));
 
