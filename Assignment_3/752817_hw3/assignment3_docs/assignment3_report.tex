@@ -1,0 +1,192 @@
+
+\begin{document}
+\title{COMS4040A \& COMS7045A Assignment 3 -- Report}
+\author{Abdulkadir Dere - 752817 - Computer Science Hons}
+\date{29 May 2020} 
+\maketitle 
+%\thispagestyle{empty}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[R]{\thepage}
+\fancyhead[L]{COMS4040A \& COMS7045A Assignment 3}
+%\vskip 3mm 
+%\pagenumbering{roman}
+%\newpage
+
+
+
+\lstset{language=C,%
+    basicstyle=\ttfamily,
+    frame=single,
+    breaklines=true,%
+    % belowskip=3em,
+    morekeywords={matlab2tikz},
+    keywordstyle=\color{blue},%
+    morekeywords=[2]{1}, keywordstyle=[2]{\color{black}},
+    identifierstyle=\color{black},%
+    stringstyle=\color{mylilas},
+    commentstyle=\color{mygreen},%
+    showstringspaces=false,%without this there will be a symbol in the places where there is a space
+    numbers=left,%
+    numberstyle={\tiny \color{black}},% size of the numbers
+    numbersep=9pt, % this defines how far the numbers are from the text
+    % emph=[1]{for,end,break},emphstyle=[1]\color{red}, %some words to emphasise
+    emph=[1]{serial_convolution, global_convolution, shared_convolution, convolution, applyMask, neighbours, },emphstyle=[1]\color{red}, %some words to emphasise
+    %emph=[2]{word1,word2}, emphstyle=[2]{style},    
+}
+
+
+\section{Introduction} 
+In this report, we will focus on the different design methodologies used to create 2D convolution on provided images. We will look at serial implementation, CUDA implementation using both global memory and constant memory, CUDA implementation using both shared memory and constant memory and CUDA implementation using texture memory. Each design methodology is defined and process has been explained with the code.
+
+\section{Methodology}
+\subsection{Serial Computation}
+We will first implement the serial version of 2D image convolution algorithm using the CPU. Serial version of the algorithm will follow the following design methodology:
+\begin{itemize}[leftmargin=0em]
+%\setlength\itemsep{-0.2em}
+  \setlength{\itemsep}{0pt}
+  \item Read the image using built-in functions. 2D image is returned as 1D image and assigned to a variable.
+  \item Convert the read image from 1D to 2D for easier computation of convolution algorithm since the image is in 2D.
+  \item Pad the image so mask we can compute the corners of the image. Image will be padded with zero padding. 
+  \item Apply the convolution mask/filter to the padded image. The convolution algorithm will be executed as a recursive algorithm. The process will start by selecting the first element of the array excluding the padded pixels. We will subtract padded size from offset (half size of the mask) to find the starting row and column of the image. This pixel must be same as the original pixel. We will apply the convolution mask to this pixel. (Algorithm \ref{lst: serial_convolution})
+  \item The convolution mask application process starts by identifying the neighbours of the given pixel location. We will compute neighbours according to the mask size since image will be padded by the factor of half of mask on all four sides. We will not run out-of-bounds when retrieving the pixel values for each neighbour since the image is padded. We will create a convolution results array with the dimensions of the mask size to compute the results. We will do element-wise multiplication between neighbours and the mask. All of these values will be added together to compute the convolution result of the given pixel location. (Algorithm \ref{lst: applyMask})
+  \item The convolution result for the pixel location will be saved in the output image and process will continue with the next pixel location until algorithm iterates through all the pixels. (Algorithm \ref{lst: serial_convolution})
+  \item The padded area will be removed by un-padding the padded image to retrieve the results in original image dimensions.
+  \item The resulting image will be converted from 2D array to 1D to save the resulting convolution image. 
+\end{itemize}
+
+The code for the detailed methodology has been provided with comments. Pre-processing and post-processing functions are not included in the report. These functions can be founds in the following file: $serialConvolution.cu$ under $src$ folder.
+
+\begin{lstlisting}[language=C, label={lst: serial_convolution}, caption= Add zero padding to the image]
+// 2D serial convolution method
+double **serial_convolution(double **input, double **output){
+    int range = padded_size - offset;
+    // printf("range: %d \n", range);
+
+    for (int i = offset; i<range; i++){
+        for (int j = offset; j<range; j++){
+            output[i][j] = applyMask(input, i, j);
+        }
+    }
+    return output;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C, label={lst: applyMask}, caption= Apply convolution mask to the given pixel]
+double applyMask(double **array, int row, int col){
+    int n_size = offset * 2 + 1;
+
+    // neighbours of given location
+    double **neighbours = allocateMatrix(n_size, n_size);
+
+    // dynamically get the neighbours range
+    int n1 = 0;
+    for (int r=row - 1; r <= row + offset; r++){
+        int n2 = 0;
+        for (int c =col - 1; c <= col + offset; c++){
+            neighbours[n1][n2] = array[r][c];
+            n2++;
+        }
+        n1++;
+    }
+    
+    double **convolution = allocateMatrix(n_size, n_size);
+    double value = 0;
+    for (int r=0; r<3; r++){
+        for(int c=0; c<3; c++){
+            convolution[r][c] = mask[r][c] * neighbours[r][c];
+            value = value + convolution[r][c];
+        }
+    }
+    return value;
+}
+\end{lstlisting}
+
+
+\subsection{CUDA implementation using both global memory and constant memory}
+Image convolution using CUDA C has been implemented using both global memory and constant memory. The convolution mask is constant through out the convolution process. It is beneficial to cache the convolution mask in the constant memory as this informs the CUDA runtime that mask values will not change during kernel execution (\cite{parallel}) (Algorithm \ref{lst: mask_global}). The constant memory will set the mask value as read-only and it will be broadcasted to all elements in the convolution kernel execution. The convolution process will be done in global memory using a CUDA kernel (Algorithm \ref{lst: global_convolution}). The kernel parameters consist of original image, allocated space for resulting image, width and height of the original image. The row and column indexes will be computed to identify which index will be computed by which thread. The starting index for row and column will be calculated by subtracting the offset value because we want to ignore the padded area. This will let the convolution process to start and end at dimensions of the original image so we don't run out-of-bounds. The kernel will calculate each convolution value by calculating all the elements within the mask filter size (dimension) and add all of them to get the convolution value for a specific pixel. The row and column indexes will be verified so that we are within the dimensions. The resulting value will be saved to the resulting image space.
+
+
+\begin{lstlisting}[language=C, label={lst: mask_global}, caption= Cache mask in to the constant memory]
+// Convolution Mask Dimension
+#define MASK_DIM 3
+#define OFFSET (MASK_DIM/2)
+
+// allocate mask in constant memory
+__constant__ float d_mask_global[MASK_DIM * MASK_DIM];
+\end{lstlisting}
+
+
+\begin{lstlisting}[language=C, label={lst: global_convolution}, caption= 2D Convolution using the global memory]
+// 2D convolution using global and constant memory
+__global__ void global_convolution(float *d_Data, float *d_result, int width, int height) {
+  // calculate the row and column index to compute for each thread
+  int row = blockIdx.y * blockDim.y + threadIdx.y;
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  // Starting index for convolution so we can ignore the padded area
+  int i_row = row - OFFSET;
+  int i_col = col - OFFSET;
+
+  // convolution value to be calculated for each pixel's row and column
+  double value = 0;
+  // iterate over all rows and column using the mask dimension.
+  // this will calculate all the neighbours and origin pixel and sum these values to give
+  // us the value of the origin pixel
+  for (int i = 0; i < MASK_DIM; i++) {
+    for (int j = 0; j < MASK_DIM; j++) {
+      if ((i_row + i) >= 0 && (i_row + i) < height && (i_col + j) >= 0 && (i_col + j) < width) {
+      	// sum all the values within the range of the mask to get origin pixel's value
+           value += d_Data[(i_row + i) * width + (i_col + j)] * d_mask_global[i * MASK_DIM + j];
+      }
+    }
+  }
+  // write back convolution result
+  d_result[row * width + col] = value;
+}
+\end{lstlisting}
+
+
+\subsection{CUDA implementation using both shared memory and constant memory}
+In this section, we will look at image convolution using both shared memory and constant memory.
+
+\begin{lstlisting}[language=C, label={lst: mask_shared}, caption= Cache mask in to the constant memory]
+
+\end{lstlisting}
+
+
+\begin{lstlisting}[language=C, label={lst: shared_convolution}, caption= 2D Convolution using the shared memory]
+
+\end{lstlisting}
+
+
+\subsection{CUDA implementation using texture memory}
+
+
+\section{Questions and Answers}
+
+
+
+\section{Experiment} 
+\subsection{Experiment Setup}
+Experiments are conducted on MacBook Pro (15-inch, 2019) by Apple laptop. Processing power of the laptop is 2.6 GHz 6-Core Intel Core i7. Memory specifications of the MacBook is 16 GB 2400 MHz DDR4. Operating system of the MacBook is macOS Catalina. Experiments conducted using different combination of distance and sorting algorithms with varying sizes for the $m$ reference, $q$ query and $d$ dimensional points. These varying sizes are recorded and kept constant to not affect the results.
+
+\subsection{Experiment Data}
+Experiments are done using synthetic data. Synthetic data is generated by using a random number generator algorithm for the reference and query matrices. Following sizes have been used for the variables $m$, $n$ and $d$ in different experiments as shown in results. We have used 100000 for $m$ references and 10 for $d$ dimensions. We have altered $q$ query points between 100 and 200.
+\subsection{Experiment Results}
+Experimental results are shown with different distance and sorting algorithms and with varying $n$ query points.
+
+
+\subsection{Summary of Results}
+
+
+\section{Conclusion} 
+
+
+\newpage
+\bibliographystyle{apalike}
+\bibliography{bibfile}
+
+\pagenumbering{arabic} 
+\end{document} 
+
