@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019) (preloaded format=pdflatex 2019.10.19)  30 MAY 2020 00:28
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019) (preloaded format=pdflatex 2019.10.19)  30 MAY 2020 02:46
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -1128,29 +1128,25 @@ LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <7> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 8.
 LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <14.4> not available
 (Font)              Font shape `T1/ptm/b/n' tried instead on input line 39.
-
-
-LaTeX Warning: No positions in optional float specifier.
-               Default added (so using `tbp') on input line 45.
-
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <10.95> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 47.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 46.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <8> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 47.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 46.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <6> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 47.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 46.
 LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <12> not available
-(Font)              Font shape `T1/ptm/b/n' tried instead on input line 71.
-LaTeX Font Info:    Try loading font information for OMS+ptm on input line 76.
+(Font)              Font shape `T1/ptm/b/n' tried instead on input line 70.
+LaTeX Font Info:    Try loading font information for OMS+ptm on input line 75.
+
 (/usr/local/texlive/2019/texmf-dist/tex/latex/psnfss/omsptm.fd
 File: omsptm.fd 
 )
 LaTeX Font Info:    Font shape `OMS/ptm/m/n' in size <10.95> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 76.
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 75.
 <witslogo_h.png, id=51, 1030.85126pt x 640.3925pt>
 File: witslogo_h.png Graphic file (type png)
 <use witslogo_h.png>
-Package pdftex.def Info: witslogo_h.png  used on input line 79.
+Package pdftex.def Info: witslogo_h.png  used on input line 78.
 (pdftex.def)             Requested size: 82.46977pt x 51.23244pt.
 
 
@@ -1162,116 +1158,116 @@ This may cause the page layout to be inconsistent, however.
 [1{/usr/local/texlive/2019/texmf-var/fonts/map/pdftex/updmap/pdftex.map}
 
  <./witslogo_h.png>]
-Overfull \hbox (11.02573pt too wide) in paragraph at lines 86--87
+Overfull \hbox (11.02573pt too wide) in paragraph at lines 85--86
 \T1/ptm/m/n/10.95 func-tions are not in-cluded in the re-port. These func-tions
  can be founds in the fol-low-ing file: $\OML/ztmcm/m/it/10.95 serialConvolutio
 n:cu$
  []
 
-LaTeX Font Info:    Try loading font information for T1+cmtt on input line 88.
+LaTeX Font Info:    Try loading font information for T1+cmtt on input line 87.
 (/usr/local/texlive/2019/texmf-dist/tex/latex/base/t1cmtt.fd
 File: t1cmtt.fd 2014/09/29 v2.5h Standard LaTeX font definitions
 ) [2] [3] [4]
 [5] [6]
-Underfull \hbox (badness 10000) in paragraph at lines 252--275
+Underfull \hbox (badness 10000) in paragraph at lines 257--280
 
  []
 
-
-LaTeX Warning: No positions in optional float specifier.
-               Default added (so using `tbp') on input line 279.
-
-LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <10.95> not available
-(Font)              Font shape `T1/ptm/b/n' tried instead on input line 283.
 [7]
-<./results/image21.png, id=235, 513.92pt x 513.92pt>
+LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <10.95> not available
+(Font)              Font shape `T1/ptm/b/n' tried instead on input line 288.
+ [8]
+<./results/image21.png, id=250, 513.92pt x 513.92pt>
 File: ./results/image21.png Graphic file (type png)
 <use ./results/image21.png>
-Package pdftex.def Info: ./results/image21.png  used on input line 306.
+Package pdftex.def Info: ./results/image21.png  used on input line 311.
 (pdftex.def)             Requested size: 95.59981pt x 95.5991pt.
-<./results/image21_sharpening.png, id=236, 513.92pt x 513.92pt>
+<./results/image21_sharpening.png, id=251, 513.92pt x 513.92pt>
 File: ./results/image21_sharpening.png Graphic file (type png)
 <use ./results/image21_sharpening.png>
 Package pdftex.def Info: ./results/image21_sharpening.png  used on input line 3
-07.
+12.
 (pdftex.def)             Requested size: 95.59981pt x 95.5991pt.
-<./results/image21_edge.png, id=237, 513.92pt x 513.92pt>
+<./results/image21_edge.png, id=252, 513.92pt x 513.92pt>
 File: ./results/image21_edge.png Graphic file (type png)
 <use ./results/image21_edge.png>
-Package pdftex.def Info: ./results/image21_edge.png  used on input line 308.
+Package pdftex.def Info: ./results/image21_edge.png  used on input line 313.
 (pdftex.def)             Requested size: 95.59981pt x 95.5991pt.
-<./results/image21_averaging.png, id=238, 513.92pt x 513.92pt>
+<./results/image21_averaging.png, id=253, 513.92pt x 513.92pt>
 File: ./results/image21_averaging.png Graphic file (type png)
 <use ./results/image21_averaging.png>
-Package pdftex.def Info: ./results/image21_averaging.png  used on input line 30
-9.
+Package pdftex.def Info: ./results/image21_averaging.png  used on input line 31
+4.
 (pdftex.def)             Requested size: 95.59981pt x 95.5991pt.
- [8]
-<./results/lena_bw.png, id=245, 513.92pt x 513.92pt>
+ [9]
+<./results/lena_bw.png, id=261, 513.92pt x 513.92pt>
 File: ./results/lena_bw.png Graphic file (type png)
 <use ./results/lena_bw.png>
-Package pdftex.def Info: ./results/lena_bw.png  used on input line 316.
+Package pdftex.def Info: ./results/lena_bw.png  used on input line 321.
 (pdftex.def)             Requested size: 95.59981pt x 95.5991pt.
-<./results/lena_bw_global_sharpening.png, id=246, 513.92pt x 513.92pt>
+<./results/lena_bw_global_sharpening.png, id=262, 513.92pt x 513.92pt>
 File: ./results/lena_bw_global_sharpening.png Graphic file (type png)
 <use ./results/lena_bw_global_sharpening.png>
 Package pdftex.def Info: ./results/lena_bw_global_sharpening.png  used on input
- line 317.
+ line 322.
 (pdftex.def)             Requested size: 95.59981pt x 95.5991pt.
-<./results/lena_bw_shared_edge.png, id=247, 513.92pt x 513.92pt>
+<./results/lena_bw_shared_edge.png, id=263, 513.92pt x 513.92pt>
 File: ./results/lena_bw_shared_edge.png Graphic file (type png)
 <use ./results/lena_bw_shared_edge.png>
 Package pdftex.def Info: ./results/lena_bw_shared_edge.png  used on input line 
-318.
+323.
 (pdftex.def)             Requested size: 95.59981pt x 95.5991pt.
-<./results/lena_bw_averaging.png, id=248, 513.92pt x 513.92pt>
+<./results/lena_bw_averaging.png, id=264, 513.92pt x 513.92pt>
 File: ./results/lena_bw_averaging.png Graphic file (type png)
 <use ./results/lena_bw_averaging.png>
-Package pdftex.def Info: ./results/lena_bw_averaging.png  used on input line 31
-9.
+Package pdftex.def Info: ./results/lena_bw_averaging.png  used on input line 32
+4.
 (pdftex.def)             Requested size: 95.59981pt x 95.5991pt.
- [9 <./results/image21.png> <./results/image21_sharpening.png> <./results/image
+
+Underfull \hbox (badness 10000) in paragraph at lines 331--335
+
+ []
+
+[10 <./results/image21.png> <./results/image21_sharpening.png> <./results/image
 21_edge.png> <./results/image21_averaging.png> <./results/lena_bw.png> <./resul
 ts/lena_bw_global_sharpening.png> <./results/lena_bw_shared_edge.png> <./result
-s/lena_bw_averaging.png>] (./report.bbl)pdfTeX warning (ext4): destination with
- the same identifier (name{page.1}) has been already used, duplicate ignored
+s/lena_bw_averaging.png>] [11] [12] (./report.bbl)pdfTeX warning (ext4): destin
+ation with the same identifier (name{page.1}) has been already used, duplicate 
+ignored
 <to be read again> 
                    \relax 
-l.336 \end{document}
+l.363 \end{document}
                      [1]
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 336.
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 336.
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 363.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 363.
  (./report.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 336.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 336.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 363.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 363.
 Package rerunfilecheck Info: File `report.out' has not changed.
-(rerunfilecheck)             Checksum: C9927C602B24F8029E4B4BBA79E8DD46;733.
-
-
-LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
-
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 336.
+(rerunfilecheck)             Checksum: DC74D7D232A66E7177A6C7E408D7002D;733.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 363.
  ) ) 
 Here is how much of TeX's memory you used:
- 24296 strings out of 492616
- 439012 string characters out of 6129480
- 913588 words of memory out of 5000000
- 27544 multiletter control sequences out of 15000+600000
- 62380 words of font info for 115 fonts, out of 8000000 for 9000
+ 24325 strings out of 492616
+ 439304 string characters out of 6129480
+ 909589 words of memory out of 5000000
+ 27558 multiletter control sequences out of 15000+600000
+ 65952 words of font info for 121 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 55i,16n,66p,1521b,1889s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 55i,16n,66p,1520b,1889s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/local/texlive/2019/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.en
 c}{/usr/local/texlive/2019/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/local/t
 exlive/2019/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/te
-xlive/2019/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/tex
-live/2019/texmf-dist/fonts/type1/public/cm-super/sftt1095.pfb></usr/local/texli
-ve/2019/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2019/te
-xmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texlive/2019/texmf-dist/f
-onts/type1/urw/times/utmri8a.pfb>
-Output written on report.pdf (10 pages, 2180591 bytes).
+xlive/2019/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texl
+ive/2019/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texli
+ve/2019/texmf-dist/fonts/type1/public/cm-super/sftt1095.pfb></usr/local/texlive
+/2019/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2019/texm
+f-dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texlive/2019/texmf-dist/fon
+ts/type1/urw/times/utmri8a.pfb>
+Output written on report.pdf (13 pages, 2197109 bytes).
 PDF statistics:
- 328 PDF objects out of 1000 (max. 8388607)
- 297 compressed objects within 3 object streams
- 170 named destinations out of 1000 (max. 500000)
+ 358 PDF objects out of 1000 (max. 8388607)
+ 322 compressed objects within 4 object streams
+ 179 named destinations out of 1000 (max. 500000)
  146 words of extra memory for PDF output out of 10000 (max. 10000000)
 

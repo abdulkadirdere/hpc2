@@ -37,12 +37,11 @@
 
 
 \section{Introduction} 
-In this report, we will focus on the different design methodologies used to create 2D convolution on provided images. We will look at serial implementation, CUDA implementation using both global memory and constant memory, CUDA implementation using both shared memory and constant memory and CUDA implementation using texture memory. Each design methodology is defined and process has been explained with the code.
+In this report, we will focus on the different design methodologies used to create 2D convolution on provided images. We will look at serial implementation, CUDA implementation using both global memory and constant memory, CUDA implementation using both shared memory and constant memory and CUDA implementation using texture memory. Each design methodology is defined and the process has been explained with the code.
 
 \section{Methodology}
 We will be using averaging, edge detection and sharpening masks for the convolution process.
-
-\begin{table}[]
+\begin{table}[H]
 \centering
 \begin{tabular}{|l|l|l|}
 \hline
@@ -75,10 +74,10 @@ We will first implement the serial version of 2D image convolution algorithm usi
   \setlength{\itemsep}{0pt}
   \item Read the image using built-in functions. 2D image is returned as 1D image and assigned to a variable.
   \item Convert the read image from 1D to 2D for easier computation of convolution algorithm since the image is in 2D.
-  \item Pad the image so mask we can compute the corners of the image. Image will be padded with zero padding. 
-  \item Apply the convolution mask/filter to the padded image. The convolution algorithm will be executed as a recursive algorithm. The process will start by selecting the first element of the array excluding the padded pixels. We will subtract padded size from offset (half size of the mask) to find the starting row and column of the image. This pixel must be same as the original pixel. We will apply the convolution mask to this pixel. (Algorithm \ref{lst: serial_convolution})
-  \item The convolution mask application process starts by identifying the neighbours of the given pixel location. We will compute neighbours according to the mask size since image will be padded by the factor of half of mask on all four sides. We will not run out-of-bounds when retrieving the pixel values for each neighbour since the image is padded. We will create a convolution results array with the dimensions of the mask size to compute the results. We will do element-wise multiplication between neighbours and the mask. All of these values will be added together to compute the convolution result of the given pixel location. (Algorithm \ref{lst: applyMask})
-  \item The convolution result for the pixel location will be saved in the output image and process will continue with the next pixel location until algorithm iterates through all the pixels. (Algorithm \ref{lst: serial_convolution})
+  \item Pad the image so mask we can compute the corners of the image. The image will be padded with zero padding. 
+  \item Apply the convolution mask/filter to the padded image. The convolution algorithm will be executed as a recursive algorithm. The process will start by selecting the first element of the array excluding the padded pixels. We will subtract padded size from the offset (half size of the mask) to find the starting row and column of the image. This pixel must be the same as the original pixel. We will apply the convolution mask to this pixel. (Algorithm \ref{lst: serial_convolution})
+  \item The convolution mask application process starts by identifying the neighbours of the given pixel location. We will compute neighbours according to the mask size since the image will be padded by the factor of half of the mask on all four sides. We will not run out-of-bounds when retrieving the pixel values for each neighbour since the image is padded. We will create a convolution results array with the dimensions of the mask size to compute the results. We will do element-wise multiplication between neighbours and the mask. All of these values will be added together to compute the convolution result of the given pixel location. (Algorithm \ref{lst: applyMask})
+  \item The convolution result for the pixel location will be saved in the output image and process will continue with the next pixel location until the algorithm iterates through all the pixels. (Algorithm \ref{lst: serial_convolution})
   \item The padded area will be removed by un-padding the padded image to retrieve the results in original image dimensions.
   \item The resulting image will be converted from 2D array to 1D to save the resulting convolution image. 
 \end{itemize}
@@ -132,9 +131,9 @@ double applyMask(double **array, int row, int col){
 
 
 \subsection{CUDA implementation using both global memory and constant memory}
-Image convolution using CUDA C has been implemented using both global memory and constant memory. The convolution mask is constant through out the convolution process. It is beneficial to cache the convolution mask in the constant memory as this informs the CUDA runtime that mask values will not change during kernel execution (\cite{parallel}) (Algorithm \ref{lst: mask_global}). The constant memory will set the mask value as read-only and it will be broadcasted to all elements in the convolution kernel execution. The convolution process will be done in global memory using a CUDA kernel (Algorithm \ref{lst: global_convolution}). The kernel parameters consist of original image, allocated space for resulting image, width and height of the original image. The row and column indexes will be computed to identify which index will be computed by which thread. The starting index for row and column will be calculated by subtracting the offset value because we want to ignore the padded area. This will let the convolution process to start and end at dimensions of the original image so we don't run out-of-bounds. The kernel will calculate each convolution value by calculating all the elements within the mask filter size (dimension) and add all of them to get the convolution value for a specific pixel. The row and column indexes will be verified so that we are within the dimensions. The resulting value will be saved to the resulting image space.
+Image convolution using CUDA C has been implemented using both global memory and constant memory. The convolution mask is constant throughout the convolution process. It is beneficial to cache the convolution mask in the constant memory as this informs the CUDA runtime that mask values will not change during kernel execution (\cite{parallel}) (Algorithm \ref{lst: mask_global}). The constant memory will set the mask value as read-only and it will be broadcasted to all elements in the convolution kernel execution. The convolution process will be done in global memory using a CUDA kernel (Algorithm \ref{lst: global_convolution}). The kernel parameters consist of original image, allocated space for resulting image, width and height of the original image. The row and column indexes will be computed to identify which index will be computed by which thread. The starting index for row and column will be calculated by subtracting the offset value because we want to ignore the padded area. This will let the convolution process to start and end at dimensions of the original image so we don't run out-of-bounds. The kernel will calculate each convolution value by calculating all the elements within the mask filter size (dimension) and add all of them to get the convolution value for a specific pixel. The row and column indexes will be verified so that we are within the dimensions. The resulting value will be saved to the resulting image space.
 
-
+These functions can be founds in the following file: $globalConvolution.cu$ under $src$ folder.
 \begin{lstlisting}[language=C, label={lst: mask_global}, caption= Cache mask in to the constant memory]
 // Convolution Mask Dimension
 #define MASK_DIM 3
@@ -176,8 +175,9 @@ __global__ void global_convolution(float *d_Data, float *d_result, int width, in
 
 
 \subsection{CUDA implementation using both shared memory and constant memory}
-In this section, we will look at image convolution using both shared memory and constant memory.
+In this section, we will look at image convolution using both shared memory and constant memory. The constant memory is used for caching the masks for read-only purposes as it is required by every element during the convolution process (\ref{lst: mask_shared}). The kernel parameters consist of the original image, the resulting image, width and height of the original image. Block sized tiles are created for shared memory tiling process. Each tile's row and column indexes are computed for the utilisation by threads. We need the boundaries of the tile so we don't run out-of-bounds and each thread works only on its own tile and does not modify other tiles values. Tiles are loaded from global memory to shared memory for faster access to tile data. Thread barrier has been set so all the threads need to finish loading data before the kernel continues with the process. We will iterate through the rows and columns within the mask dimensions and also check if we are still within the tile bounds. The convolution masks will be applied to every element within the tile within the dimensions of the mask. Hence results can be summed to retrieve the output result for a given pixel.
 
+These functions can be founds in the following file: $sharedConvolution.cu$ under $src$ folder.
 \begin{lstlisting}[language=C, label={lst: mask_shared}, caption= Cache mask in to the constant memory]
 // Convolution Mask Dimension
 #define MASK_DIM 3
@@ -242,9 +242,14 @@ __global__ void shared_convolution(float* dData, float* dResult, unsigned int wi
   }
 }\end{lstlisting}
 
-
-\section{Questions and Answers}
-
+The dimensions of the block are set to block width (\ref{lst: dim_shared}). Block dimension is tile width summed with two times the offset. The offset is the padded area of the image. The offset is multiplied by two to cater for the padding of opposite sides of the image (e.g. left and right). Hence, the block dimension is set to block width so all the blocks are padded and pixels at the block corners can be computed. The padded area of each block is ignored in the kernel when are calculating the starting row and columns. The grid dimensions are set to cater for the minimum number of grids required to compute the image convolution for the whole image.
+\begin{lstlisting}[language=C, label={lst: dim_shared}, caption= Shared memory kernel dimensions]
+#define TILE_WIDTH 16
+#define OFFSET 2
+#define BLOCK_WIDTH (TILE_WIDTH+(2*OFFSET))
+dim3 dimGrid(BLOCKS, BLOCKS);
+dim3 dimBlock(BLOCK_WIDTH, BLOCK_WIDTH);
+\end{lstlisting}
 
 
 \section{Experiment} 
@@ -274,9 +279,9 @@ Number of multiprocessors:     10 \\
 Kernel execution timeout:      Yes \\
 
 \subsection{Experiment Results}
-Experimental results are shown with different distance and sorting algorithms and with varying $n$ query points.
+Experimental results are shown for the serial, global memory and shared memory implementations for the image convolution.
 
-\begin{table}[]
+\begin{table}[H]
 \centering
 \begin{tabular}{|l|c|c|}
 \hline
@@ -299,7 +304,7 @@ Experimental results are shown with different distance and sorting algorithms an
 \label{tab:results-table}
 \end{table}
 
-
+Experimental results are shown for the serial, global memory and shared memory implementations for the image convolution. The results for the different implementations are the same. Hence, the different image results are produced by the different filters used during the convolution process (figure \ref{fig:image21}). The results for the $lead\_bw$ image is more clear (figure \ref{fig:lena}) and the effects can be visualised better. The different design implementations do not affect the resulting image, as expected.
 
 \begin{figure}[H]
 \centering
@@ -307,7 +312,7 @@ Experimental results are shown with different distance and sorting algorithms an
 \subfloat[]{\includegraphics[width=.2\textwidth]{image21_sharpening.png}} \hfill
 \subfloat[]{\includegraphics[width=.2\textwidth]{image21_edge.png}} \hfill
 \subfloat[]{\includegraphics[width=.2\textwidth]{image21_averaging.png}} \hfill
-\caption{Convolution results for the $image21$ image (a) Original Image (b) Sharpening (c) Edge detection (d) Averaging}
+\caption{Convolution results for the $image21$ image  (a) Original Image (b) Sharpening mask (c) Edge detection mask (d) Averaging mask}
 \label{fig:image21}
 \end{figure}
 
@@ -317,16 +322,38 @@ Experimental results are shown with different distance and sorting algorithms an
 \subfloat[]{\includegraphics[width=.2\textwidth]{lena_bw_global_sharpening.png}} \hfill
 \subfloat[]{\includegraphics[width=.2\textwidth]{lena_bw_shared_edge.png}} \hfill
 \subfloat[]{\includegraphics[width=.2\textwidth]{lena_bw_averaging.png}} \hfill
-\caption{Convolution results for the $lena\_bw$ image (a) Original Image (b) Sharpening (c) Edge detection (d) Averaging}
+\caption{Convolution results for the $lena\_bw$ image (a) Original Image (b) Sharpening mask (c) Edge detection mask (d) Averaging mask}
 \label{fig:lena}
 \end{figure}
 
+The resulting images for all the kernels can be found in the $results$ folder.
+
+The averaging filter with 16 elements (4x4 size) results are as follows:\\
+Serial Image Convolution Time: 156.733444 ms \\
+Global Memory Time elapsed: 0.153600 ms \\
+Shared Memory Time elapsed: 0.034880 ms \\
+
+We can see that the global memory version takes almost double the kernel with 3x3 size as shown in table \ref{tab:results-table}. However, the shared memory version still performs similar results compared to the smaller sized averaging filter. 
 
 \subsection{Summary of Results}
-As we can see from the Table~\ref{tab:results-table} that global memory version has greatly improved on the serial implementation. The shared memory version has improved on global memory and serial implementations. However, global memory implementation is still not at its top efficiency since every thread calculates its own output. This can be increased by implementing threads to compute a tile of the image similar to shared memory implementation. 
+As we can see from table~\ref{tab:results-table} that global memory version has greatly improved on the serial implementation. The shared memory version has improved on global memory and serial implementations. However, global memory implementation is still not implemented efficiently since every thread calculates its own output. This results in global memory access for each thread. The global memory version can be improved by implementing threads to compute a tile of the image similar to shared memory implementation. This will decrease access to global memory. 
+
+
+\section{Questions and Answers}
+(a) How many floating point operations are performed in your convolution kernel using global memory?
+The floating point operations are calculated by multiplying image dimensions with mask dimensions. Hence, \(FLOP = width * height * mask\_width * mask\_height\). All the provided images are the size of 512 x 512 and mask size is kept at 3x3 in most cases. Therefore, $FLOP = 512 * 512 * 3 * 3 = 2 359 296$.
+
+(b) How many global memory reads are performed by your kernel using global memory and kernel using shared memory, respectively?
+The global memory version performs a global memory read for each thread since every thread calculates its own output. This is inefficient as discussed before. The shared memory version has less memory reads since we load the tiles from global memory to shared memory. The shared memory reads are $\frac{1}{TILE\_WIDTH}$ of the global memory kernel because we are accessing the global memory only to load the tile from global memory to shared memory. Hence, the memory access decreases by the factor of $\frac{1}{TILE\_WIDTH}$ of the global memory.
+
+(c) How many global memory writes are performed by your convolution kernel using shared memory ?
+The global memory writes are conducted by each thread. Hence, the global memory write will be 512x512 = 262144 writes to the global memory for an image with the dimensions of 512x512. The threads are restricted in a way that only the threads within the limits of the image can write to the global memory. Hence, we are calculating the number of threads which has write access to the output image.
+
+(d) What would happen to the performance of your kernel using shared and constant memory when the size of the ‘averaging’ mask increases (say, to a substantial large size) ?
+The issue is that mask is cached in the constant memory. So any mask size which exceeds the limits of cache memory capacity will not allow the program to compile and run. Hence, it will not work. Another is the kernel dimensions are dependent on the tile width which is also affected by the mask size. Hence, any changes to mask size will break the limitations of the kernel. Hence, CUDA will not be able to compile and run the application.
 
 \section{Conclusion} 
-
+In this report, we have discussed and showcased different image convolution methods using various device memories. The usage of shared memory shows significant performance increases compared to global memory and serial implementations. The usage of constant memory allowed us to access convolution masks as read-only data and sped-up the process.  These can be visualised in the given tables and results. 
 
 \newpage
 \bibliographystyle{apalike}

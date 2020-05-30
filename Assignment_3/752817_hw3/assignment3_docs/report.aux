@@ -20,15 +20,15 @@
 \babel@aux{english}{}
 \@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {2}Methodology}{1}{section.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Serial Computation}{1}{subsection.2.1}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Masks used for convolution: sharpening, edge detection and averaging respectively\relax }}{1}{table.caption.1}\protected@file@percent }
 \providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
 \newlabel{tab:my-table}{{1}{1}{Masks used for convolution: sharpening, edge detection and averaging respectively\relax }{table.caption.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Serial Computation}{1}{subsection.2.1}\protected@file@percent }
 \newlabel{lst: serial_convolution}{{1}{2}{Add zero padding to the image}{lstlisting.1}{}}
 \@writefile{lol}{\contentsline {lstlisting}{\numberline {1}Add zero padding to the image}{2}{lstlisting.1}\protected@file@percent }
+\newlabel{lst: applyMask}{{2}{2}{Apply convolution mask to the given pixel}{lstlisting.2}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {2}Apply convolution mask to the given pixel}{2}{lstlisting.2}\protected@file@percent }
 \citation{parallel}
-\newlabel{lst: applyMask}{{2}{3}{Apply convolution mask to the given pixel}{lstlisting.2}{}}
-\@writefile{lol}{\contentsline {lstlisting}{\numberline {2}Apply convolution mask to the given pixel}{3}{lstlisting.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.2}CUDA implementation using both global memory and constant memory}{3}{subsection.2.2}\protected@file@percent }
 \newlabel{lst: mask_global}{{3}{4}{Cache mask in to the constant memory}{lstlisting.3}{}}
 \@writefile{lol}{\contentsline {lstlisting}{\numberline {3}Cache mask in to the constant memory}{4}{lstlisting.3}\protected@file@percent }
@@ -37,28 +37,30 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.3}CUDA implementation using both shared memory and constant memory}{5}{subsection.2.3}\protected@file@percent }
 \newlabel{lst: mask_shared}{{5}{5}{Cache mask in to the constant memory}{lstlisting.5}{}}
 \@writefile{lol}{\contentsline {lstlisting}{\numberline {5}Cache mask in to the constant memory}{5}{lstlisting.5}\protected@file@percent }
-\newlabel{lst: shared_convolution}{{6}{5}{2D Convolution using the shared memory}{lstlisting.6}{}}
-\@writefile{lol}{\contentsline {lstlisting}{\numberline {6}2D Convolution using the shared memory}{5}{lstlisting.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {3}Questions and Answers}{7}{section.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4}Experiment}{7}{section.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Experiment Setup}{7}{subsection.4.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Results of the convolutions applied to the given images.\relax }}{8}{table.caption.2}\protected@file@percent }
-\newlabel{tab:results-table}{{2}{8}{Results of the convolutions applied to the given images.\relax }{table.caption.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Experiment Results}{8}{subsection.4.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Convolution results for the $image21$ image (a) Original Image (b) Sharpening (c) Edge detection (d) Averaging\relax }}{9}{figure.caption.3}\protected@file@percent }
-\newlabel{fig:image21}{{1}{9}{Convolution results for the $image21$ image (a) Original Image (b) Sharpening (c) Edge detection (d) Averaging\relax }{figure.caption.3}{}}
-\@writefile{lof}{\contentsline {subfigure}{\numberline{(a)}{\ignorespaces {}}}{9}{subfigure.1.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {subfigure}{\numberline{(b)}{\ignorespaces {}}}{9}{subfigure.1.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {subfigure}{\numberline{(c)}{\ignorespaces {}}}{9}{subfigure.1.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {subfigure}{\numberline{(d)}{\ignorespaces {}}}{9}{subfigure.1.4}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Convolution results for the $lena\_bw$ image (a) Original Image (b) Sharpening (c) Edge detection (d) Averaging\relax }}{9}{figure.caption.4}\protected@file@percent }
-\newlabel{fig:lena}{{2}{9}{Convolution results for the $lena\_bw$ image (a) Original Image (b) Sharpening (c) Edge detection (d) Averaging\relax }{figure.caption.4}{}}
-\@writefile{lof}{\contentsline {subfigure}{\numberline{(a)}{\ignorespaces {}}}{9}{subfigure.2.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {subfigure}{\numberline{(b)}{\ignorespaces {}}}{9}{subfigure.2.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {subfigure}{\numberline{(c)}{\ignorespaces {}}}{9}{subfigure.2.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {subfigure}{\numberline{(d)}{\ignorespaces {}}}{9}{subfigure.2.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Summary of Results}{9}{subsection.4.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {5}Conclusion}{9}{section.5}\protected@file@percent }
+\newlabel{lst: shared_convolution}{{6}{6}{2D Convolution using the shared memory}{lstlisting.6}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {6}2D Convolution using the shared memory}{6}{lstlisting.6}\protected@file@percent }
+\newlabel{lst: dim_shared}{{7}{7}{Shared memory kernel dimensions}{lstlisting.7}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {7}Shared memory kernel dimensions}{7}{lstlisting.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Experiment}{7}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Experiment Setup}{7}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Experiment Results}{8}{subsection.3.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Results of the convolutions applied to the given images.\relax }}{9}{table.caption.2}\protected@file@percent }
+\newlabel{tab:results-table}{{2}{9}{Results of the convolutions applied to the given images.\relax }{table.caption.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Convolution results for the $image21$ image (a) Original Image (b) Sharpening mask (c) Edge detection mask (d) Averaging mask\relax }}{10}{figure.caption.3}\protected@file@percent }
+\newlabel{fig:image21}{{1}{10}{Convolution results for the $image21$ image (a) Original Image (b) Sharpening mask (c) Edge detection mask (d) Averaging mask\relax }{figure.caption.3}{}}
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(a)}{\ignorespaces {}}}{10}{subfigure.1.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(b)}{\ignorespaces {}}}{10}{subfigure.1.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(c)}{\ignorespaces {}}}{10}{subfigure.1.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(d)}{\ignorespaces {}}}{10}{subfigure.1.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Convolution results for the $lena\_bw$ image (a) Original Image (b) Sharpening mask (c) Edge detection mask (d) Averaging mask\relax }}{10}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:lena}{{2}{10}{Convolution results for the $lena\_bw$ image (a) Original Image (b) Sharpening mask (c) Edge detection mask (d) Averaging mask\relax }{figure.caption.4}{}}
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(a)}{\ignorespaces {}}}{10}{subfigure.2.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(b)}{\ignorespaces {}}}{10}{subfigure.2.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(c)}{\ignorespaces {}}}{10}{subfigure.2.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(d)}{\ignorespaces {}}}{10}{subfigure.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Summary of Results}{11}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Questions and Answers}{11}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Conclusion}{12}{section.5}\protected@file@percent }
 \bibstyle{apalike}
 \bibdata{bibfile}
 \bibcite{parallel}{{1}{2010}{{Kirk and Hwu}}{{}}}
